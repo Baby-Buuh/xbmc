@@ -22,7 +22,6 @@
 #include <wayland-client.h>
 
 #include "ProtocolBase.h"
-#include "Surface.h"
 
 namespace KODI
 {
@@ -33,25 +32,29 @@ namespace WAYLAND
 namespace PROTOCOL
 {
 
-class CCompositor : public CProtocolBase<wl_compositor>
+class CSurface : public CProtocolBase<wl_surface>
 {
 public:
-  static constexpr ProtocolTag Meta = ProtocolTag("wl_compositor", 1, &wl_compositor_interface);
   using CProtocolBase::CProtocolBase;
-
-  ~CCompositor()
+  
+  ~CSurface()
   {
-    wl_compositor_destroy(m_native);
+    wl_surface_destroy(m_native);
   }
 
-  CSurface* CreateSurface() const
+  wl_callback* CreateFrameCallback()
   {
-    return new CSurface(wl_compositor_create_surface(m_native));
+    return wl_surface_frame(m_native);
   }
 
-  wl_region * CreateRegion() const
+  void SetOpaqueRegion(wl_region* region)
   {
-    return wl_compositor_create_region(m_native);
+    wl_surface_set_opaque_region(m_native, region);
+  }
+
+  void Commit()
+  {
+    wl_surface_commit(m_native);
   }
 };
 

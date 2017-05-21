@@ -24,6 +24,7 @@
 
 #include "Compositor.h"
 #include "Registry.h"
+#include "Shell.h"
 
 namespace KODI
 {
@@ -46,6 +47,16 @@ public:
   wl_display* GetWlDisplay()
   {
     return m_display;
+  }
+  
+  CCompositor& GetCompositor()
+  {
+    return *m_compositor;
+  }
+  
+  CShell& GetShell()
+  {
+    return *m_shell;
   }
 
   /**
@@ -72,6 +83,7 @@ private:
   std::unique_ptr<CRegistry> m_registry;
   
   std::unique_ptr<CCompositor> m_compositor;
+  std::unique_ptr<CShell> m_shell;
   
   void Roundtrip();
 };

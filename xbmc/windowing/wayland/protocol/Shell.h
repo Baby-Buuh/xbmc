@@ -19,9 +19,10 @@
  */
 #pragma once
 
-#include <cstdint>
-
 #include <wayland-client.h>
+
+#include "ProtocolBase.h"
+#include "ShellSurface.h"
 
 namespace KODI
 {
@@ -32,23 +33,21 @@ namespace WAYLAND
 namespace PROTOCOL
 {
 
-/**
- * Meta-information about protocol wrapper
- * 
- * Each protocol wrapper class should have this information as member "Meta"
- * 
- * \param protocol protocol name
- * \param version supported version (minimum)
- * \param interface wl_interface to use for binding
- */
-struct ProtocolTag final
+class CShell : public CProtocolBase<wl_shell>
 {
-  constexpr ProtocolTag(const char* protocol, std::uint32_t version, const wl_interface * const interface)
-  : protocol(protocol), version(version), interface(interface)
-  {}
-  const char * protocol;
-  std::uint32_t version;
-  const wl_interface * interface;
+public:
+  static constexpr ProtocolTag Meta = ProtocolTag("wl_shell", 1, &wl_shell_interface);
+  using CProtocolBase::CProtocolBase;
+
+  ~CShell()
+  {
+    wl_shell_destroy(m_native);
+  }
+
+  CShellSurface* CreateShellSurface(wl_surface* surface)
+  {
+    return new CShellSurface(wl_shell_get_shell_surface(m_native, surface));
+  }
 };
 
 }

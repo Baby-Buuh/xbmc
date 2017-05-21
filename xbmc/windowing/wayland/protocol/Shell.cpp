@@ -17,45 +17,9 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-#pragma once
 
-#include <wayland-client.h>
+#include "Shell.h"
 
-#include "ProtocolBase.h"
-#include "Surface.h"
+using namespace KODI::WINDOWING::WAYLAND::PROTOCOL;
 
-namespace KODI
-{
-namespace WINDOWING
-{
-namespace WAYLAND
-{
-namespace PROTOCOL
-{
-
-class CCompositor : public CProtocolBase<wl_compositor>
-{
-public:
-  static constexpr ProtocolTag Meta = ProtocolTag("wl_compositor", 1, &wl_compositor_interface);
-  using CProtocolBase::CProtocolBase;
-
-  ~CCompositor()
-  {
-    wl_compositor_destroy(m_native);
-  }
-
-  CSurface* CreateSurface() const
-  {
-    return new CSurface(wl_compositor_create_surface(m_native));
-  }
-
-  wl_region * CreateRegion() const
-  {
-    return wl_compositor_create_region(m_native);
-  }
-};
-
-}
-}
-}
-}
+const ProtocolTag CShell::Meta;

@@ -30,7 +30,7 @@ using namespace KODI::WINDOWING::WAYLAND::PROTOCOL;
 CConnection::CConnection(std::string const & name)
 {
   m_display = wl_display_connect(name.empty() ? nullptr : name.c_str());
-  
+
   if (!m_display)
   {
     std::string realname = name;
@@ -46,14 +46,15 @@ CConnection::CConnection(std::string const & name)
     }
     throw std::runtime_error(std::string("Could not connect to Wayland display \"" + realname + "\""));
   }
-  
+
   m_registry.reset(new CRegistry(m_display, this));
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global interfaces");
   Roundtrip();
   CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
-  
+
   // Verify
   ThrowIfUnbound(m_compositor);
+  ThrowIfUnbound(m_shell);
 }
 
 CConnection::~CConnection()
@@ -112,10 +113,11 @@ bool CConnection::TryBind(std::unique_ptr<T>& target, std::uint32_t name, const 
   }
 }
 
-
 bool CConnection::OnGlobalInterfaceAvailable(std::uint32_t name, const std::string& interface, std::uint32_t version)
 {
-  return TryBind(m_compositor, name, interface, version);
+  return
+  TryBind(m_compositor, name, interface, version)
+    || TryBind(m_shell, name, interface, version);
 }
 
 void CConnection::OnGlobalInterfaceRemoved(std::uint32_t name)
