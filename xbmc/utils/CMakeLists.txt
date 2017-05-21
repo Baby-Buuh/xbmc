@@ -14,6 +14,7 @@ set(SOURCES ActorProtocol.cpp
             CPUInfo.cpp
             Crc32.cpp
             DatabaseUtils.cpp
+            EGLUtils.cpp
             EndianSwap.cpp
             Environment.cpp
             Fanart.cpp
@@ -92,6 +93,7 @@ set(HEADERS ActorProtocol.h
             CPUInfo.h
             Crc32.h
             DatabaseUtils.h
+            EGLUtils.h
             EndianSwap.h
             Environment.h
             EventStream.h
