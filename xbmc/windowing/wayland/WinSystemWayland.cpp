@@ -19,10 +19,12 @@
  */
 
 #include "WinSystemWayland.h"
+
+#include "protocol/Connection.h"
 #include "settings/DisplaySettings.h"
+#include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
-
 
 CWinSystemWayland::CWinSystemWayland() :
 CWinSystemBase()
@@ -30,8 +32,15 @@ CWinSystemBase()
   m_eWindowSystem = WINDOW_SYSTEM_WAYLAND;
 }
 
+CWinSystemWayland::~CWinSystemWayland()
+{
+
+}
+
 bool CWinSystemWayland::InitWindowSystem()
 {
+  CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
+  m_connection.reset(new PROTOCOL::CConnection);
   return CWinSystemBase::InitWindowSystem();
 }
 

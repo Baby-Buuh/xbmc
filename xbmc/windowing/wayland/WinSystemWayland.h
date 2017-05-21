@@ -32,11 +32,16 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
+namespace PROTOCOL
+{
+class CConnection;
+}
+
 class CWinSystemWayland : public CWinSystemBase
 {
 public:
   CWinSystemWayland();
-  virtual ~CWinSystemWayland() = default;
+  virtual ~CWinSystemWayland();
 
   bool InitWindowSystem() override;
   bool DestroyWindowSystem() override;
@@ -59,6 +64,7 @@ public:
   virtual void Unregister(IDispResource *resource);
 
 protected:
+  std::unique_ptr<PROTOCOL::CConnection> m_connection;
 };
 
 
