@@ -18,7 +18,6 @@
  *
  */
 
-
 #include "GLContextEGL.h"
 
 #include "utils/log.h"

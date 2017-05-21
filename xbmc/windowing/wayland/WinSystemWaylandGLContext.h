@@ -17,8 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
-
 #pragma once
 
 #include "GLContextEGL.h"
@@ -34,6 +32,7 @@ namespace WAYLAND
 {
 
 #if defined(HAS_GL)
+
 class CWinSystemWaylandGLContext : public CWinSystemWayland, public CRenderSystemGL
 {
 public:
@@ -50,7 +49,7 @@ public:
   EGLDisplay GetEGLDisplay() const;
   EGLSurface GetEGLSurface() const;
   EGLContext GetEGLContext() const;
-  EGLConfig  GetEGLConfig() const;
+  EGLConfig GetEGLConfig() const;
 
 protected:
   void SetVSyncImpl(bool enable) override;
@@ -67,5 +66,5 @@ private:
 
 #if defined(HAS_GL)
 XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext, g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext)
+#  define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext)
 #endif

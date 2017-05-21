@@ -50,9 +50,9 @@ bool CWinSystemWayland::DestroyWindowSystem()
 }
 
 bool CWinSystemWayland::CreateNewWindow(const std::string& name,
-                                    bool fullScreen,
-                                    RESOLUTION_INFO& res,
-                                    PHANDLE_EVENT_FUNC userFunction)
+                                        bool fullScreen,
+                                        RESOLUTION_INFO& res,
+                                        PHANDLE_EVENT_FUNC userFunction)
 {
   return true;
 }

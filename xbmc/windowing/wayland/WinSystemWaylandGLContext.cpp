@@ -18,7 +18,6 @@
  *
  */
 
-
 #include "WinSystemWaylandGLContext.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
