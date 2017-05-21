@@ -21,6 +21,8 @@
 #include "WinSystemWayland.h"
 
 #include "protocol/Connection.h"
+#include "protocol/ShellSurface.h"
+#include "protocol/Surface.h"
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
 
@@ -34,7 +36,7 @@ CWinSystemBase()
 
 CWinSystemWayland::~CWinSystemWayland()
 {
-
+  DestroyWindowSystem();
 }
 
 bool CWinSystemWayland::InitWindowSystem()
@@ -46,6 +48,9 @@ bool CWinSystemWayland::InitWindowSystem()
 
 bool CWinSystemWayland::DestroyWindowSystem()
 {
+  m_shellSurface.reset();
+  m_surface.reset();
+  m_connection.reset();
   return true;
 }
 
@@ -54,6 +59,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res,
                                         PHANDLE_EVENT_FUNC userFunction)
 {
+  m_surface.reset(m_connection->GetCompositor().CreateSurface());
+  m_shellSurface.reset(m_connection->GetShell().CreateShellSurface(*m_surface));
+  
   return true;
 }
 
@@ -66,6 +74,10 @@ void CWinSystemWayland::UpdateResolutions()
 {
   CWinSystemBase::UpdateResolutions();
 
+  // FIXME
+  UpdateDesktopResolution(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP), 0, 1280, 720, 60);
+  //CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP).strId = std::to_string(d);
+//      SetWindowResolution(width, height);
 
   CDisplaySettings::GetInstance().ClearCustomResolutions();
   CDisplaySettings::GetInstance().ApplyCalibrations();
@@ -78,6 +90,11 @@ bool CWinSystemWayland::ResizeWindow(int newWidth, int newHeight, int newLeft, i
 
 bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
+  // FIXME
+  m_nWidth      = res.iWidth;
+  m_nHeight     = res.iHeight;
+  m_bFullScreen = fullScreen;
+  
   return true;
 }
 

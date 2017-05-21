@@ -19,6 +19,8 @@
  */
 
 #include "WinSystemWaylandGLContext.h"
+#include "protocol/Connection.h"
+#include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -26,15 +28,36 @@ using namespace KODI::WINDOWING::WAYLAND;
 #if defined(HAS_GL)
 
 bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
-                                               bool fullScreen,
-                                               RESOLUTION_INFO& res,
-                                               PHANDLE_EVENT_FUNC userFunction)
+                                                 bool fullScreen,
+                                                 RESOLUTION_INFO& res,
+                                                 PHANDLE_EVENT_FUNC userFunction)
 {
+  if (!m_glContext.CreateDisplay(m_connection->GetWlDisplay(),
+                                 EGL_OPENGL_BIT,
+                                 EGL_OPENGL_API))
+  {
+    return false;
+  }
+
+  CWinSystemWayland::CreateNewWindow(name, fullScreen, res, userFunction);
+
+  if (!m_glContext.CreateSurface(*m_surface))
+  {
+    return false;
+  }
+
+  if (!m_glContext.CreateContext())
+  {
+    return false;
+  }
+
   return SetFullScreen(fullScreen, res, false);
 }
 
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
+  CLog::Log(LOGDEBUG, "SetFullScreen: %dx%d", res.iWidth, res.iHeight);
+  
   auto ret = CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays);
   if (ret)
   {
@@ -72,7 +95,7 @@ EGLContext CWinSystemWaylandGLContext::GetEGLContext() const
   return m_glContext.m_eglContext;
 }
 
-EGLConfig  CWinSystemWaylandGLContext::GetEGLConfig() const
+EGLConfig CWinSystemWaylandGLContext::GetEGLConfig() const
 {
   return m_glContext.m_eglConfig;
 }

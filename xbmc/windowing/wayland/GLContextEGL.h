@@ -19,7 +19,13 @@
  */
 #pragma once
 
-#include "EGL/egl.h"
+#include <set>
+#include <string>
+
+#include <wayland-client.h>
+#include <wayland-egl.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 namespace KODI
 {
@@ -34,11 +40,11 @@ public:
   CGLContextEGL();
   virtual ~CGLContextEGL();
 
-  bool CreateDisplay(void* connection,
+  bool CreateDisplay(wl_display* display,
                      EGLint renderable_type,
                      EGLint rendering_api);
 
-  bool CreateSurface(void* window);
+  bool CreateSurface(wl_surface* surface);
   bool CreateContext();
   void Destroy();
   void Detach();
@@ -47,10 +53,17 @@ public:
 
   bool IsExtSupported(const char* extension) const;
 
-  EGLDisplay m_eglDisplay;
-  EGLSurface m_eglSurface;
-  EGLContext m_eglContext;
-  EGLConfig m_eglConfig;
+  wl_egl_window* m_nativeWindow = nullptr;
+  EGLDisplay m_eglDisplay = EGL_NO_DISPLAY;
+  EGLSurface m_eglSurface = EGL_NO_SURFACE;
+  EGLContext m_eglContext = EGL_NO_CONTEXT;
+  EGLConfig m_eglConfig = nullptr;
+  
+private:
+  std::set<std::string> m_clientExtensions;
+  
+  PFNEGLGETPLATFORMDISPLAYEXTPROC m_eglGetPlatformDisplayEXT = nullptr;
+  PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC m_eglCreatePlatformWindowSurfaceEXT = nullptr;
 };
 
 }

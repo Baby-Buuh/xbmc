@@ -20,17 +20,29 @@
 
 #include "GLContextEGL.h"
 
+#include "protocol/Connection.h"
+#include "utils/EGLUtils.h"
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
-
-CGLContextEGL::CGLContextEGL() :
-  m_eglDisplay(EGL_NO_DISPLAY),
-  m_eglSurface(EGL_NO_SURFACE),
-  m_eglContext(EGL_NO_CONTEXT),
-  m_eglConfig (0)
+CGLContextEGL::CGLContextEGL()
 {
+  // EGL_EXT_platform_wayland requires EGL_EXT_client_extensions, so this should
+  // be safe to use
+  m_clientExtensions = CEGLUtils::GetClientExtensions();
+
+  if (m_clientExtensions.find("EGL_EXT_platform_base") == m_clientExtensions.end())
+  {
+    throw std::runtime_error("EGL implementation does not support EGL_EXT_platform_base, cannot continue");
+  }
+  if (m_clientExtensions.find("EGL_EXT_platform_wayland") == m_clientExtensions.end())
+  {
+    throw std::runtime_error("EGL implementation does not support EGL_EXT_platform_wayland, cannot continue");
+  }
+
+  m_eglGetPlatformDisplayEXT = CEGLUtils::SafeGetProcAddress<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
+  m_eglCreatePlatformWindowSurfaceEXT = CEGLUtils::SafeGetProcAddress<PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC>("eglCreatePlatformWindowSurfaceEXT");
 }
 
 CGLContextEGL::~CGLContextEGL()
@@ -38,21 +50,101 @@ CGLContextEGL::~CGLContextEGL()
   Destroy();
 }
 
-bool CGLContextEGL::CreateDisplay(void* connection,
+bool CGLContextEGL::CreateDisplay(wl_display* display,
                                   EGLint renderable_type,
                                   EGLint rendering_api)
 {
-  return false;
+  EGLint neglconfigs = 0;
+  int major, minor;
+
+  EGLint attribs[] ={
+    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+    EGL_RENDERABLE_TYPE, renderable_type,
+    EGL_RED_SIZE, 8,
+    EGL_GREEN_SIZE, 8,
+    EGL_BLUE_SIZE, 8,
+    EGL_NONE,
+  };
+
+  if (m_eglDisplay == EGL_NO_DISPLAY)
+  {
+    m_eglDisplay = m_eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
+  }
+
+  if (m_eglDisplay == EGL_NO_DISPLAY)
+  {
+    CEGLUtils::LogError("Failed to get EGL Wayland platform display");
+    return false;
+  }
+
+  if (eglInitialize(m_eglDisplay, &major, &minor) != EGL_TRUE)
+  {
+    CEGLUtils::LogError("Failed to initialize EGL display");
+    return false;
+  }
+  CLog::Log(LOGINFO, "Got EGL v%d.%d", major, minor);
+
+  if (eglBindAPI(rendering_api) != EGL_TRUE)
+  {
+    CEGLUtils::LogError("Failed to bind EGL API");
+    return false;
+  }
+
+  if (eglChooseConfig(m_eglDisplay, attribs, &m_eglConfig, 1, &neglconfigs) != EGL_TRUE)
+  {
+    CEGLUtils::LogError("Failed to query number of EGL configs");
+    return false;
+  }
+
+  if (neglconfigs <= 0)
+  {
+    CLog::Log(LOGERROR, "No suitable EGL configs found");
+    return false;
+  }
+
+  return true;
 }
 
 bool CGLContextEGL::CreateContext()
 {
-  return false;
+  const EGLint context_atrribs[] = {
+    EGL_CONTEXT_CLIENT_VERSION, 2,
+    EGL_NONE
+  };
+
+  m_eglContext = eglCreateContext(m_eglDisplay, m_eglConfig,
+                                  EGL_NO_CONTEXT, context_atrribs);
+
+  if (m_eglContext == EGL_NO_CONTEXT)
+  {
+    CEGLUtils::LogError("Failed to create EGL context");
+    return false;
+  }
+
+  if (eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext) != EGL_TRUE)
+  {
+    CEGLUtils::LogError("Failed to make context current");
+    return false;
+  }
+
+  return true;
 }
 
-bool CGLContextEGL::CreateSurface(void* window)
+bool CGLContextEGL::CreateSurface(wl_surface* surface)
 {
-  return false;
+  m_nativeWindow = wl_egl_window_create(surface, 1280, 720);
+
+  m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
+                                                     m_eglConfig,
+                                                     m_nativeWindow, nullptr);
+
+  if (m_eglSurface == EGL_NO_SURFACE)
+  {
+    CEGLUtils::LogError("Failed to create EGL platform window surface");
+    return false;
+  }
+
+  return true;
 }
 
 void CGLContextEGL::Destroy()
@@ -63,11 +155,17 @@ void CGLContextEGL::Destroy()
     eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     m_eglContext = EGL_NO_CONTEXT;
   }
-
+  
   if (m_eglSurface != EGL_NO_SURFACE)
   {
     eglDestroySurface(m_eglDisplay, m_eglSurface);
     m_eglSurface = EGL_NO_SURFACE;
+  }
+  
+  if (m_nativeWindow)
+  {
+    wl_egl_window_destroy(m_nativeWindow);
+    m_nativeWindow = nullptr;
   }
 
   if (m_eglDisplay != EGL_NO_DISPLAY)
@@ -94,7 +192,7 @@ void CGLContextEGL::Detach()
 
 void CGLContextEGL::SetVSync(bool enable)
 {
-    eglSwapInterval(m_eglDisplay, enable);
+  eglSwapInterval(m_eglDisplay, enable);
 }
 
 void CGLContextEGL::SwapBuffers()
@@ -107,5 +205,6 @@ void CGLContextEGL::SwapBuffers()
 
 bool CGLContextEGL::IsExtSupported(const char* extension) const
 {
+  // TODO
   return false;
 }

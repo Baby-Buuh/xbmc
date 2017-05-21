@@ -33,6 +33,8 @@ namespace WAYLAND
 namespace PROTOCOL
 {
 class CConnection;
+class CSurface;
+class CShellSurface;
 }
 
 class CWinSystemWayland : public CWinSystemBase
@@ -63,6 +65,8 @@ public:
 
 protected:
   std::unique_ptr<PROTOCOL::CConnection> m_connection;
+  std::unique_ptr<PROTOCOL::CSurface> m_surface;
+  std::unique_ptr<PROTOCOL::CShellSurface> m_shellSurface;
 };
 
 
