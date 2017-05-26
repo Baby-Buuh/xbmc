@@ -35,16 +35,18 @@ CConnection::CConnection()
   
   m_registry.on_global() = [&] (std::uint32_t name, std::string interface, std::uint32_t version)
   {
-    // TODO Use constants here (integrate with waylandpp), investigate version checking
+    // TODO Use constants here (integrate with waylandpp)
     if (interface == "wl_compositor")
     {
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u", interface.c_str(), version);
-      m_registry.bind(name, m_compositor, version);
+      std::uint32_t bindVersion = 1;
+      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version (server has version %u)", interface.c_str(), bindVersion, version);
+      m_registry.bind(name, m_compositor, bindVersion);
     }
     else if (interface == "wl_shell")
     {
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u", interface.c_str(), version);
-      m_registry.bind(name, m_shell, version);
+      std::uint32_t bindVersion = 1;
+      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version (server has version %u)", interface.c_str(), bindVersion, version);
+      m_registry.bind(name, m_shell, bindVersion);
     }
   };
   
