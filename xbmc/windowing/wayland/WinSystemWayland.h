@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include "Connection.h"
 #include "windowing/WinSystem.h"
 
 class IDispResource;
@@ -29,13 +30,6 @@ namespace WINDOWING
 {
 namespace WAYLAND
 {
-
-namespace PROTOCOL
-{
-class CConnection;
-class CSurface;
-class CShellSurface;
-}
 
 class CWinSystemWayland : public CWinSystemBase
 {
@@ -64,9 +58,9 @@ public:
   virtual void Unregister(IDispResource *resource);
 
 protected:
-  std::unique_ptr<PROTOCOL::CConnection> m_connection;
-  std::unique_ptr<PROTOCOL::CSurface> m_surface;
-  std::unique_ptr<PROTOCOL::CShellSurface> m_shellSurface;
+  std::unique_ptr<CConnection> m_connection;
+  wayland::surface_t m_surface;
+  wayland::shell_surface_t m_shellSurface;  
 };
 
 

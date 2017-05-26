@@ -20,9 +20,6 @@
 
 #include "WinSystemWayland.h"
 
-#include "protocol/Connection.h"
-#include "protocol/ShellSurface.h"
-#include "protocol/Surface.h"
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
 
@@ -42,14 +39,14 @@ CWinSystemWayland::~CWinSystemWayland()
 bool CWinSystemWayland::InitWindowSystem()
 {
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
-  m_connection.reset(new PROTOCOL::CConnection);
+  m_connection.reset(new CConnection);
   return CWinSystemBase::InitWindowSystem();
 }
 
 bool CWinSystemWayland::DestroyWindowSystem()
 {
-  m_shellSurface.reset();
-  m_surface.reset();
+  m_shellSurface = wayland::shell_surface_t();
+  m_surface = wayland::surface_t();
   m_connection.reset();
   return true;
 }
@@ -59,8 +56,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res,
                                         PHANDLE_EVENT_FUNC userFunction)
 {
-  m_surface.reset(m_connection->GetCompositor().CreateSurface());
-  m_shellSurface.reset(m_connection->GetShell().CreateShellSurface(*m_surface));
+  m_surface = m_connection->GetCompositor().create_surface();
+  m_shellSurface = m_connection->GetShell().get_shell_surface(m_surface);
+  m_shellSurface.set_class("kodi");
+  m_shellSurface.set_title("Kodi");
+  m_shellSurface.set_toplevel();
   
   return true;
 }

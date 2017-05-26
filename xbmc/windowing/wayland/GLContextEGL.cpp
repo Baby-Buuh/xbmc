@@ -20,7 +20,6 @@
 
 #include "GLContextEGL.h"
 
-#include "protocol/Connection.h"
 #include "utils/EGLUtils.h"
 #include "utils/log.h"
 
@@ -50,7 +49,7 @@ CGLContextEGL::~CGLContextEGL()
   Destroy();
 }
 
-bool CGLContextEGL::CreateDisplay(wl_display* display,
+bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
                                   EGLint renderable_type,
                                   EGLint rendering_api)
 {
@@ -68,7 +67,9 @@ bool CGLContextEGL::CreateDisplay(wl_display* display,
 
   if (m_eglDisplay == EGL_NO_DISPLAY)
   {
-    m_eglDisplay = m_eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
+    m_eglDisplay = eglGetDisplay(display);
+    // FIXME waylandpp does not provide access to C wl_display
+      //m_eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_EXT, display, nullptr);
   }
 
   if (m_eglDisplay == EGL_NO_DISPLAY)
@@ -130,13 +131,15 @@ bool CGLContextEGL::CreateContext()
   return true;
 }
 
-bool CGLContextEGL::CreateSurface(wl_surface* surface)
+bool CGLContextEGL::CreateSurface(wayland::surface_t& surface)
 {
-  m_nativeWindow = wl_egl_window_create(surface, 1280, 720);
+  m_nativeWindow = wayland::egl_window_t(surface, 1280, 720);
 
-  m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
-                                                     m_eglConfig,
-                                                     m_nativeWindow, nullptr);
+  m_eglSurface = eglCreateWindowSurface(m_eglDisplay, m_eglConfig, m_nativeWindow, nullptr);
+  // FIXME
+  //m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
+//                                                     m_eglConfig,
+//                                                     m_nativeWindow, nullptr);
 
   if (m_eglSurface == EGL_NO_SURFACE)
   {
@@ -162,11 +165,7 @@ void CGLContextEGL::Destroy()
     m_eglSurface = EGL_NO_SURFACE;
   }
   
-  if (m_nativeWindow)
-  {
-    wl_egl_window_destroy(m_nativeWindow);
-    m_nativeWindow = nullptr;
-  }
+  m_nativeWindow = wayland::egl_window_t();
 
   if (m_eglDisplay != EGL_NO_DISPLAY)
   {

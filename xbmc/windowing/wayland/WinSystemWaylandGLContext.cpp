@@ -19,7 +19,6 @@
  */
 
 #include "WinSystemWaylandGLContext.h"
-#include "protocol/Connection.h"
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
@@ -32,7 +31,7 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
                                                  RESOLUTION_INFO& res,
                                                  PHANDLE_EVENT_FUNC userFunction)
 {
-  if (!m_glContext.CreateDisplay(m_connection->GetWlDisplay(),
+  if (!m_glContext.CreateDisplay(m_connection->GetDisplay(),
                                  EGL_OPENGL_BIT,
                                  EGL_OPENGL_API))
   {
@@ -41,7 +40,7 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
 
   CWinSystemWayland::CreateNewWindow(name, fullScreen, res, userFunction);
 
-  if (!m_glContext.CreateSurface(*m_surface))
+  if (!m_glContext.CreateSurface(m_surface))
   {
     return false;
   }
@@ -98,11 +97,6 @@ EGLContext CWinSystemWaylandGLContext::GetEGLContext() const
 EGLConfig CWinSystemWaylandGLContext::GetEGLConfig() const
 {
   return m_glContext.m_eglConfig;
-}
-
-bool CWinSystemWaylandGLContext::IsExtSupported(const char* extension)
-{
-  return m_glContext.IsExtSupported(extension);
 }
 
 #endif

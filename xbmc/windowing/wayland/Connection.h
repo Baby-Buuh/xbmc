@@ -19,10 +19,9 @@
  */
 #pragma once
 
-#include <wayland-client.h>
+#include <memory>
 
-#include "ProtocolBase.h"
-#include "ShellSurface.h"
+#include <wayland-client.hpp>
 
 namespace KODI
 {
@@ -30,27 +29,23 @@ namespace WINDOWING
 {
 namespace WAYLAND
 {
-namespace PROTOCOL
-{
 
-class CShell : public CProtocolBase<wl_shell>
+class CConnection
 {
 public:
-  static constexpr ProtocolTag Meta = ProtocolTag("wl_shell", 1, &wl_shell_interface);
-  using CProtocolBase::CProtocolBase;
-
-  ~CShell()
-  {
-    wl_shell_destroy(m_native);
-  }
-
-  CShellSurface* CreateShellSurface(wl_surface* surface)
-  {
-    return new CShellSurface(wl_shell_get_shell_surface(m_native, surface));
-  }
+  CConnection();
+  
+  wayland::display_t& GetDisplay();
+  wayland::compositor_t& GetCompositor();
+  wayland::shell_t& GetShell();
+  
+private: 
+  std::unique_ptr<wayland::display_t> m_display;
+  wayland::registry_t m_registry;
+  wayland::compositor_t m_compositor;
+  wayland::shell_t m_shell;
 };
 
-}
 }
 }
 }

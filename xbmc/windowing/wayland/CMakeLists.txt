@@ -1,8 +1,10 @@
-set(SOURCES GLContextEGL.cpp
+set(SOURCES Connection.cpp
+            GLContextEGL.cpp
             WinSystemWayland.cpp
             WinSystemWaylandGLContext.cpp)
 
-set(HEADERS GLContextEGL.h
+set(HEADERS Connection.h
+            GLContextEGL.h
             WinSystemWayland.h
             WinSystemWaylandGLContext.h)
 

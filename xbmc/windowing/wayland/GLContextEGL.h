@@ -22,8 +22,8 @@
 #include <set>
 #include <string>
 
-#include <wayland-client.h>
-#include <wayland-egl.h>
+#include <wayland-client.hpp>
+#include <wayland-egl.hpp>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -40,11 +40,11 @@ public:
   CGLContextEGL();
   virtual ~CGLContextEGL();
 
-  bool CreateDisplay(wl_display* display,
+  bool CreateDisplay(wayland::display_t& display,
                      EGLint renderable_type,
                      EGLint rendering_api);
 
-  bool CreateSurface(wl_surface* surface);
+  bool CreateSurface(wayland::surface_t& surface);
   bool CreateContext();
   void Destroy();
   void Detach();
@@ -53,7 +53,7 @@ public:
 
   bool IsExtSupported(const char* extension) const;
 
-  wl_egl_window* m_nativeWindow = nullptr;
+  wayland::egl_window_t m_nativeWindow;
   EGLDisplay m_eglDisplay = EGL_NO_DISPLAY;
   EGLSurface m_eglSurface = EGL_NO_SURFACE;
   EGLContext m_eglContext = EGL_NO_CONTEXT;
