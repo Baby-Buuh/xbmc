@@ -24,6 +24,7 @@
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "settings/Settings.h"
 #include "utils/AlarmClock.h"
+#include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "windowing/WindowingFactory.h"
 
@@ -38,13 +39,13 @@ namespace ADDON
 CScreenSaver::CScreenSaver(AddonProps props)
  : ADDON::CAddonDll(std::move(props))
 {
-  memset(&m_struct, 0, sizeof(m_struct));
+  m_struct = {0};
 }
 
 CScreenSaver::CScreenSaver(const char *addonID)
  : ADDON::CAddonDll(AddonProps(addonID, ADDON_UNKNOWN))
 {
-  memset(&m_struct, 0, sizeof(m_struct));
+  m_struct = {0};
 }
 
 bool CScreenSaver::IsInUse() const
@@ -69,37 +70,51 @@ bool CScreenSaver::CreateScreenSaver()
   m_profile = CSpecialProtocol::TranslatePath(Profile());
 
 #ifdef HAS_DX
-  m_info.device = g_Windowing.Get3D11Context();
+  m_struct.props.device = g_Windowing.Get3D11Context();
 #else
-  m_info.device = nullptr;
+  m_struct.props.device = nullptr;
 #endif
-  m_info.x = 0;
-  m_info.y = 0;
-  m_info.width = g_graphicsContext.GetWidth();
-  m_info.height = g_graphicsContext.GetHeight();
-  m_info.pixelRatio = g_graphicsContext.GetResInfo().fPixelRatio;
-  m_info.name = m_name.c_str();
-  m_info.presets = m_presets.c_str();
-  m_info.profile = m_profile.c_str();
+  m_struct.props.x = 0;
+  m_struct.props.y = 0;
+  m_struct.props.width = g_graphicsContext.GetWidth();
+  m_struct.props.height = g_graphicsContext.GetHeight();
+  m_struct.props.pixelRatio = g_graphicsContext.GetResInfo().fPixelRatio;
+  m_struct.props.name = m_name.c_str();
+  m_struct.props.presets = m_presets.c_str();
+  m_struct.props.profile = m_profile.c_str();
 
-  if (CAddonDll::Create(ADDON_INSTANCE_SCREENSAVER, &m_struct, &m_info) == ADDON_STATUS_OK)
-    return true;
+  m_struct.toKodi.kodiInstance = this;
 
-  return false;
+  /* Open the class "kodi::addon::CInstanceScreensaver" on add-on side */
+  ADDON_STATUS status = CAddonDll::CreateInstance(ADDON_INSTANCE_SCREENSAVER, ID(), &m_struct);
+  if (status != ADDON_STATUS_OK)
+  if (!CAddonDll::CreateInstance(ADDON_INSTANCE_SCREENSAVER, ID(), &m_struct))
+  {
+    CLog::Log(LOGFATAL, "Screensaver: failed to create instance for '%s' and not usable!", ID().c_str());
+    return false;
+  }
+
+  return true;
 }
 
 void CScreenSaver::Start()
 {
   // notify screen saver that they should start
-  if (m_struct.Start)
-    m_struct.Start();
+  if (m_struct.toAddon.Start)
+    m_struct.toAddon.Start(&m_struct);
+}
+
+void CScreenSaver::Stop()
+{
+  if (m_struct.toAddon.Stop)
+    m_struct.toAddon.Stop(&m_struct);
 }
 
 void CScreenSaver::Render()
 {
   // ask screensaver to render itself
-  if (m_struct.Render)
-    m_struct.Render();
+  if (m_struct.toAddon.Render)
+    m_struct.toAddon.Render(&m_struct);
 }
 
 void CScreenSaver::Destroy()
@@ -114,8 +129,8 @@ void CScreenSaver::Destroy()
     return;
   }
 
-  memset(&m_struct, 0, sizeof(m_struct));
-  CAddonDll::Destroy();
+  m_struct = {0};
+  CAddonDll::DestroyInstance(ID());
 }
 
 } /* namespace ADDON */

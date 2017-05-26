@@ -20,7 +20,7 @@
 #pragma once
 
 #include "AddonDll.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_scr_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Screensaver.h"
 
 namespace ADDON
 {
@@ -36,6 +36,7 @@ public:
 
   bool CreateScreenSaver();
   void Start();
+  void Stop();
   void Render();
   void Destroy();
 
@@ -44,8 +45,7 @@ private:
   std::string m_presets; /*!< To add-on sended preset path */
   std::string m_profile; /*!< To add-on sended profile path */
 
-  SCR_PROPS m_info;
-  KodiToAddonFuncTable_Screensaver m_struct;
+  AddonInstance_Screensaver m_struct;
 };
 
 } /* namespace ADDON */
