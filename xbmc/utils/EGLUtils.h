@@ -35,7 +35,7 @@ public:
   static std::set<std::string> GetClientExtensions();
   static void LogError(std::string const & what);
   template<typename T>
-  static T SafeGetProcAddress(const char * procname)
+  static T GetRequiredProcAddress(const char * procname)
   {
     T p = reinterpret_cast<T>(eglGetProcAddress(procname));
     if (!p)

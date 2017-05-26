@@ -39,10 +39,14 @@ public:
   CWinSystemWaylandGLContext() = default;
   virtual ~CWinSystemWaylandGLContext() = default;
 
+  bool InitWindowSystem() override;
   bool CreateNewWindow(const std::string& name,
                        bool fullScreen,
                        RESOLUTION_INFO& res,
                        PHANDLE_EVENT_FUNC userFunction) override;
+  bool DestroyWindow() override;
+  bool DestroyWindowSystem() override;
+
 
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
   EGLDisplay GetEGLDisplay() const;

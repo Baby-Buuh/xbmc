@@ -26,26 +26,30 @@ using namespace KODI::WINDOWING::WAYLAND;
 
 #if defined(HAS_GL)
 
+bool CWinSystemWaylandGLContext::InitWindowSystem()
+{
+  if (!CWinSystemWayland::InitWindowSystem())
+  {
+    return false;
+  }
+
+  return m_glContext.CreateDisplay(m_connection->GetDisplay(),
+                                   EGL_OPENGL_BIT,
+                                   EGL_OPENGL_API);
+}
+
 bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
                                                  bool fullScreen,
                                                  RESOLUTION_INFO& res,
                                                  PHANDLE_EVENT_FUNC userFunction)
 {
-  if (!m_glContext.CreateDisplay(m_connection->GetDisplay(),
-                                 EGL_OPENGL_BIT,
-                                 EGL_OPENGL_API))
+
+  if (!CWinSystemWayland::CreateNewWindow(name, fullScreen, res, userFunction))
   {
     return false;
   }
-
-  CWinSystemWayland::CreateNewWindow(name, fullScreen, res, userFunction);
 
   if (!m_glContext.CreateSurface(m_surface))
-  {
-    return false;
-  }
-
-  if (!m_glContext.CreateContext())
   {
     return false;
   }
@@ -53,10 +57,24 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
   return SetFullScreen(fullScreen, res, false);
 }
 
+bool CWinSystemWaylandGLContext::DestroyWindow()
+{
+  m_glContext.DestroySurface();
+
+  return CWinSystemWayland::DestroyWindow();
+}
+
+bool CWinSystemWaylandGLContext::DestroyWindowSystem()
+{
+  m_glContext.Destroy();
+
+  return CWinSystemWayland::DestroyWindowSystem();
+}
+
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
   CLog::Log(LOGDEBUG, "SetFullScreen: %dx%d", res.iWidth, res.iHeight);
-  
+
   auto ret = CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays);
   if (ret)
   {

@@ -45,9 +45,8 @@ public:
                      EGLint rendering_api);
 
   bool CreateSurface(wayland::surface_t& surface);
-  bool CreateContext();
+  void DestroySurface();
   void Destroy();
-  void Detach();
   void SetVSync(bool enable);
   void SwapBuffers();
 

@@ -45,8 +45,7 @@ bool CWinSystemWayland::InitWindowSystem()
 
 bool CWinSystemWayland::DestroyWindowSystem()
 {
-  m_shellSurface = wayland::shell_surface_t();
-  m_surface = wayland::surface_t();
+  DestroyWindow();
   m_connection.reset();
   return true;
 }
@@ -58,6 +57,8 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 {
   m_surface = m_connection->GetCompositor().create_surface();
   m_shellSurface = m_connection->GetShell().get_shell_surface(m_surface);
+  // "class" should match the name of the .desktop file; it's needed for correct
+  // interaction with WM menus and displaying the window icon in the app list
   m_shellSurface.set_class("kodi");
   m_shellSurface.set_title("Kodi");
   m_shellSurface.set_toplevel();
@@ -67,6 +68,10 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
 bool CWinSystemWayland::DestroyWindow()
 {
+  m_shellSurface = wayland::shell_surface_t();
+  // waylandpp automatically calls wl_surface_destroy when the last reference is removed
+  m_surface = wayland::surface_t();
+  
   return true;
 }
 

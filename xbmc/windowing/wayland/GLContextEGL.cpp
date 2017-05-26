@@ -40,8 +40,8 @@ CGLContextEGL::CGLContextEGL()
     throw std::runtime_error("EGL implementation does not support EGL_EXT_platform_wayland, cannot continue");
   }
 
-  m_eglGetPlatformDisplayEXT = CEGLUtils::SafeGetProcAddress<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
-  m_eglCreatePlatformWindowSurfaceEXT = CEGLUtils::SafeGetProcAddress<PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC>("eglCreatePlatformWindowSurfaceEXT");
+  m_eglGetPlatformDisplayEXT = CEGLUtils::GetRequiredProcAddress<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
+  m_eglCreatePlatformWindowSurfaceEXT = CEGLUtils::GetRequiredProcAddress<PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC>("eglCreatePlatformWindowSurfaceEXT");
 }
 
 CGLContextEGL::~CGLContextEGL()
@@ -106,8 +106,22 @@ bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
   return true;
 }
 
-bool CGLContextEGL::CreateContext()
+bool CGLContextEGL::CreateSurface(wayland::surface_t& surface)
 {
+  m_nativeWindow = wayland::egl_window_t(surface, 1280, 720);
+
+  m_eglSurface = eglCreateWindowSurface(m_eglDisplay, m_eglConfig, m_nativeWindow, nullptr);
+  // FIXME
+  //m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
+//                                                     m_eglConfig,
+//                                                     m_nativeWindow, nullptr);
+
+  if (m_eglSurface == EGL_NO_SURFACE)
+  {
+    CEGLUtils::LogError("Failed to create EGL platform window surface");
+    return false;
+  }
+
   const EGLint context_atrribs[] = {
     EGL_CONTEXT_CLIENT_VERSION, 2,
     EGL_NONE
@@ -131,42 +145,10 @@ bool CGLContextEGL::CreateContext()
   return true;
 }
 
-bool CGLContextEGL::CreateSurface(wayland::surface_t& surface)
-{
-  m_nativeWindow = wayland::egl_window_t(surface, 1280, 720);
-
-  m_eglSurface = eglCreateWindowSurface(m_eglDisplay, m_eglConfig, m_nativeWindow, nullptr);
-  // FIXME
-  //m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
-//                                                     m_eglConfig,
-//                                                     m_nativeWindow, nullptr);
-
-  if (m_eglSurface == EGL_NO_SURFACE)
-  {
-    CEGLUtils::LogError("Failed to create EGL platform window surface");
-    return false;
-  }
-
-  return true;
-}
-
 void CGLContextEGL::Destroy()
 {
-  if (m_eglContext != EGL_NO_CONTEXT)
-  {
-    eglDestroyContext(m_eglDisplay, m_eglContext);
-    eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-    m_eglContext = EGL_NO_CONTEXT;
-  }
+  DestroySurface();
   
-  if (m_eglSurface != EGL_NO_SURFACE)
-  {
-    eglDestroySurface(m_eglDisplay, m_eglSurface);
-    m_eglSurface = EGL_NO_SURFACE;
-  }
-  
-  m_nativeWindow = wayland::egl_window_t();
-
   if (m_eglDisplay != EGL_NO_DISPLAY)
   {
     eglTerminate(m_eglDisplay);
@@ -174,10 +156,11 @@ void CGLContextEGL::Destroy()
   }
 }
 
-void CGLContextEGL::Detach()
+void CGLContextEGL::DestroySurface()
 {
   if (m_eglContext != EGL_NO_CONTEXT)
   {
+    eglDestroyContext(m_eglDisplay, m_eglContext);
     eglMakeCurrent(m_eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     m_eglContext = EGL_NO_CONTEXT;
   }
@@ -187,6 +170,8 @@ void CGLContextEGL::Detach()
     eglDestroySurface(m_eglDisplay, m_eglSurface);
     m_eglSurface = EGL_NO_SURFACE;
   }
+  
+  m_nativeWindow = wayland::egl_window_t();
 }
 
 void CGLContextEGL::SetVSync(bool enable)
