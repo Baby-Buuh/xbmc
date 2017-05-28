@@ -19,9 +19,12 @@
  */
 #pragma once
 
+#include <map>
 #include <memory>
 
 #include <wayland-client.hpp>
+
+#include "SeatInputProcessor.h"
 
 namespace KODI
 {
@@ -30,7 +33,7 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CConnection
+class CConnection : public IInputHandler
 {
 public:
   CConnection();
@@ -39,8 +42,14 @@ public:
   wayland::compositor_t& GetCompositor();
   wayland::shell_t& GetShell();
   
-private: 
+  virtual void OnEvent(InputType type, XBMC_Event& event) override;
+  
+private:
+  void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat);
+  void OnSeatRemoved(std::uint32_t name);
+  
   std::unique_ptr<wayland::display_t> m_display;
+  std::map<std::uint32_t, CSeatInputProcessor> m_seatHandlers;
   wayland::registry_t m_registry;
   wayland::compositor_t m_compositor;
   wayland::shell_t m_shell;
