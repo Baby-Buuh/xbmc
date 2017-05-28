@@ -19,6 +19,8 @@
  */
 
 #include "WinSystemWaylandGLContext.h"
+
+#include "Connection.h"
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
