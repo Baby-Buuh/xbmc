@@ -20,6 +20,7 @@
 
 #include "WinSystemWayland.h"
 
+#include "Connection.h"
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
 #include "WinEventsWayland.h"

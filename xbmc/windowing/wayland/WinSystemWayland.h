@@ -19,7 +19,8 @@
  */
 #pragma once
 
-#include "Connection.h"
+#include <wayland-client.hpp>
+
 #include "windowing/WinSystem.h"
 
 class IDispResource;
@@ -30,6 +31,8 @@ namespace WINDOWING
 {
 namespace WAYLAND
 {
+
+class CConnection;
 
 class CWinSystemWayland : public CWinSystemBase
 {
