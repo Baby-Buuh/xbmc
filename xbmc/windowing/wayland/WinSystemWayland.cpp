@@ -22,6 +22,7 @@
 
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
+#include "WinEventsWayland.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -40,12 +41,14 @@ bool CWinSystemWayland::InitWindowSystem()
 {
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection);
+  CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
   return CWinSystemBase::InitWindowSystem();
 }
 
 bool CWinSystemWayland::DestroyWindowSystem()
 {
   DestroyWindow();
+  CWinEventsWayland::SetDisplay(nullptr);
   m_connection.reset();
   return true;
 }
