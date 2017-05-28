@@ -64,7 +64,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // "class" should match the name of the .desktop file; it's needed for correct
   // interaction with WM menus and displaying the window icon in the app list
   m_shellSurface.set_class("kodi");
-  m_shellSurface.set_title("Kodi");
+  m_shellSurface.set_title(name);
   m_shellSurface.set_toplevel();
   
   return true;
