@@ -99,8 +99,8 @@ int WaylandToXbmcButton(std::uint32_t button)
 
 }
 
-CSeatInputProcessor::CSeatInputProcessor(const wayland::seat_t& seat, IInputHandler* handler)
-: m_handler(handler), m_seat(seat)
+CSeatInputProcessor::CSeatInputProcessor(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler* handler)
+: m_globalName(globalName), m_seat(seat), m_handler(handler)
 {
   assert(m_handler);
 

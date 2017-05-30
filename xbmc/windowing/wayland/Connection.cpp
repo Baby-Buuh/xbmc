@@ -70,12 +70,23 @@ CConnection::CConnection()
   m_display->roundtrip();
   CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
   
-  // TODO Check if interfaces were bound
+  if (!m_compositor)
+  {
+    throw std::runtime_error("Missing required wl_compositor protocol");
+  }
+  if (!m_shell)
+  {
+    throw std::runtime_error("Missing required wl_shell protocol");
+  }
+  if (m_seatHandlers.empty())
+  {
+    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+  }
 }
 
 void CConnection::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
-  m_seatHandlers.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(seat, this));
+  m_seatHandlers.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
 }
 
 void CConnection::OnSeatRemoved(std::uint32_t name)
@@ -96,11 +107,13 @@ wayland::display_t& CConnection::GetDisplay()
 
 wayland::compositor_t& CConnection::GetCompositor()
 {
+  assert(m_compositor);
   return m_compositor;
 }
 
 wayland::shell_t& CConnection::GetShell()
 {
+  assert(m_shell);
   return m_shell;
 }
 

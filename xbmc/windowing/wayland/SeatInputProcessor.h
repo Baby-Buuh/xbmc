@@ -49,7 +49,11 @@ public:
 class CSeatInputProcessor
 {
 public:
-  CSeatInputProcessor(wayland::seat_t const & seat, IInputHandler* handler);
+  CSeatInputProcessor(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler* handler);
+  std::uint32_t GetGlobalName() const
+  {
+    return m_globalName;
+  }
   std::string GetName() const
   {
     return m_name;
@@ -64,11 +68,13 @@ private:
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
   
+  
+  std::uint32_t m_globalName;
+  wayland::seat_t m_seat;
+  std::string m_name = "<unknown>";
+
   IInputHandler* m_handler = nullptr;
   
-  std::string m_name = "<unknown>";
-  wayland::seat_t m_seat;
-
   wayland::pointer_t m_pointer;
   wayland::keyboard_t m_keyboard;
   wayland::touch_t m_touch;
