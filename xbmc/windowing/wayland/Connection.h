@@ -42,7 +42,7 @@ public:
   wayland::compositor_t& GetCompositor();
   wayland::shell_t& GetShell();
   
-  virtual void OnEvent(InputType type, XBMC_Event& event) override;
+  virtual void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   
 private:
   void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat);

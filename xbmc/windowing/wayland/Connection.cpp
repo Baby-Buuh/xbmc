@@ -94,7 +94,7 @@ void CConnection::OnSeatRemoved(std::uint32_t name)
   m_seatHandlers.erase(name);
 }
 
-void CConnection::OnEvent(InputType type, XBMC_Event& event)
+void CConnection::OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event)
 {
   CWinEvents::MessagePush(&event);
 }

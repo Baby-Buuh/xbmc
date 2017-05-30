@@ -143,14 +143,14 @@ void CSeatInputProcessor::HandlePointerCapability()
   {
     // TODO honor WinSystemBase OS cursor flag
     m_pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
-    m_handler->OnEnter(InputType::POINTER);
+    m_handler->OnEnter(m_globalName, InputType::POINTER);
     m_pointerX = wl_fixed_to_int(surfaceX);
     m_pointerY = wl_fixed_to_int(surfaceY);
     SendMouseMotion();
   };
   m_pointer.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
-    m_handler->OnLeave(InputType::POINTER);
+    m_handler->OnLeave(m_globalName, InputType::POINTER);
   };
   m_pointer.on_motion() = [this](std::uint32_t time, std::int32_t surfaceX, std::int32_t surfaceY)
   {
@@ -218,7 +218,7 @@ void CSeatInputProcessor::SendMouseMotion()
       .y = m_pointerY
     }
   };
-  m_handler->OnEvent(InputType::POINTER, event);
+  m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }
 
 void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
@@ -236,18 +236,18 @@ void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
       .y = m_pointerY
     }
   };
-  m_handler->OnEvent(InputType::POINTER, event);
+  m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }
 
 void CSeatInputProcessor::HandleKeyboardCapability()
 {
   m_keyboard.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, wayland::array_t keys)
   {
-    m_handler->OnEnter(InputType::KEYBOARD);
+    m_handler->OnEnter(m_globalName, InputType::KEYBOARD);
   };
   m_keyboard.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
-    m_handler->OnLeave(InputType::KEYBOARD);
+    m_handler->OnLeave(m_globalName, InputType::KEYBOARD);
   };
   m_keyboard.on_keymap() = [this](wayland::keyboard_keymap_format format, int fd, std::uint32_t size)
   {
@@ -300,7 +300,7 @@ void CSeatInputProcessor::SendKey(XBMCKey key, bool pressed)
       }
     }
   };
-  m_handler->OnEvent(InputType::KEYBOARD, event);
+  m_handler->OnEvent(m_globalName, InputType::KEYBOARD, event);
 }
 
 void CSeatInputProcessor::HandleTouchCapability()

@@ -44,9 +44,9 @@ class IInputHandler
 {
 public:
   virtual ~IInputHandler() {}
-  virtual void OnEvent(InputType type, XBMC_Event& event) {}
-  virtual void OnEnter(InputType type) {}
-  virtual void OnLeave(InputType type) {}
+  virtual void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) {}
+  virtual void OnEnter(std::uint32_t seatGlobalName, InputType type) {}
+  virtual void OnLeave(std::uint32_t seatGlobalName, InputType type) {}
 };
 
 class CSeatInputProcessor
