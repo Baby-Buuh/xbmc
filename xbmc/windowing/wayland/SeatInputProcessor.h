@@ -19,8 +19,11 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <wayland-client-protocol.hpp>
 
+#include "input/keyboard/XkbcommonKeymap.h"
 #include "windowing/XBMC_events.h"
 
 namespace KODI
@@ -68,6 +71,7 @@ private:
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
   
+  void SendKey(XBMCKey key, bool pressed);
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
@@ -82,6 +86,8 @@ private:
   unsigned char m_pointerButtonState = 0;
   std::uint16_t m_pointerX = 0;
   std::uint16_t m_pointerY = 0;
+  
+  std::unique_ptr<KEYBOARD::CXkbcommonKeymap> m_keymap;
 };
 
 }

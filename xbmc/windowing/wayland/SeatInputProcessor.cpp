@@ -28,6 +28,7 @@
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
+using KODI::KEYBOARD::CXkbcommonKeymap;
 
 namespace
 {
@@ -240,7 +241,66 @@ void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
 
 void CSeatInputProcessor::HandleKeyboardCapability()
 {
-  // TODO
+  m_keyboard.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, wayland::array_t keys)
+  {
+    m_handler->OnEnter(InputType::KEYBOARD);
+  };
+  m_keyboard.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
+  {
+    m_handler->OnLeave(InputType::KEYBOARD);
+  };
+  m_keyboard.on_keymap() = [this](wayland::keyboard_keymap_format format, int fd, std::uint32_t size)
+  {
+    if (format != wayland::keyboard_keymap_format::xkb_v1)
+    {
+      CLog::Log(LOGWARNING, "Wayland compositor sent keymap in format %u, but we only understand xkbv1 - keyboard input will not work", format);
+      return;
+    }
+    // FIXME memory handling
+    
+    xkb_context* context = CXkbcommonKeymap::CreateXkbContext();
+    xkb_keymap* keymap = CXkbcommonKeymap::ReceiveXkbKeymapFromSharedMemory(context, fd, size);
+    
+    m_keymap.reset(new CXkbcommonKeymap(keymap));
+  };
+  m_keyboard.on_key() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t key, wayland::keyboard_key_state state)
+  {
+    if (!m_keymap)
+    {
+      CLog::Log(LOGWARNING, "Key event for code %u without valid keymap, ignoring", key);
+      return;
+    }
+    
+    XBMCKey xbmcKey = m_keymap->XBMCKeysymForKeycode(key);
+    SendKey(xbmcKey, state == wayland::keyboard_key_state::pressed);
+  };
+}
+
+void CSeatInputProcessor::SendKey(XBMCKey key, bool pressed)
+{
+  assert(m_keymap);
+
+  auto event = XBMC_Event
+  {
+    .key =
+    {
+      .type = static_cast<unsigned char> (pressed ? XBMC_KEYDOWN : XBMC_KEYUP),
+      // Could use different values for different seats, but this does not seem to be used anyway
+      .which = 0,
+      // FIXME How is this different from type?
+      .state = static_cast<unsigned char> (pressed ? XBMC_PRESSED : XBMC_RELEASED),
+      .keysym =
+      {
+        // The scancode is a char, which is not enough to hold the value from Wayland anyway
+        .scancode = 0,
+        .sym = key,
+        .mod = m_keymap->ActiveXBMCModifiers(),
+        // FIXME use proper unicode conversion!
+        .unicode = static_cast<std::uint16_t> (key)
+      }
+    }
+  };
+  m_handler->OnEvent(InputType::KEYBOARD, event);
 }
 
 void CSeatInputProcessor::HandleTouchCapability()
