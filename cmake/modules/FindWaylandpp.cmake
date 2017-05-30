@@ -15,13 +15,13 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 find_path(WAYLANDPP_INCLUDE_DIR NAMES wayland-client.hpp
-                          PATHS ${PC_WAYLANDPP_INCLUDE_DIRS})
+                                PATHS ${PC_WAYLANDPP_INCLUDE_DIRS})
 
 find_library(WAYLANDPP_CLIENT_LIBRARY NAMES wayland-client++
-                         PATHS ${PC_WAYLANDPP_LIBRARIES} ${PC_WAYLANDPP_LIBRARY_DIRS})
+                                      PATHS ${PC_WAYLANDPP_LIBRARIES} ${PC_WAYLANDPP_LIBRARY_DIRS})
 
 find_library(WAYLANDPP_EGL_LIBRARY NAMES wayland-egl++
-                         PATHS ${PC_WAYLANDPP_LIBRARIES} ${PC_WAYLANDPP_LIBRARY_DIRS})
+                                   PATHS ${PC_WAYLANDPP_LIBRARIES} ${PC_WAYLANDPP_LIBRARY_DIRS})
 
 include (FindPackageHandleStandardArgs)
 find_package_handle_standard_args (WAYLANDPP
