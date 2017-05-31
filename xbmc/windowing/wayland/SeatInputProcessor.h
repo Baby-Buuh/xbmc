@@ -71,7 +71,8 @@ private:
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
   
-  void SendKey(XBMCKey key, bool pressed);
+  void ConvertAndSendKey(std::uint32_t scancode, bool pressed);
+  void SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;

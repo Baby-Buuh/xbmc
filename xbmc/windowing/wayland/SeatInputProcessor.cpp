@@ -19,6 +19,7 @@
  */
 
 #include <cassert>
+#include <limits>
 
 #include <linux/input-event-codes.h>
 #include <wayland-client-protocol.hpp>
@@ -97,6 +98,8 @@ int WaylandToXbmcButton(std::uint32_t button)
       return -1;
   }
 }
+
+constexpr int WL_KEYBOARD_XKB_CODE_OFFSET = 8;
 
 }
 
@@ -271,12 +274,43 @@ void CSeatInputProcessor::HandleKeyboardCapability()
       return;
     }
     
-    XBMCKey xbmcKey = m_keymap->XBMCKeysymForKeycode(key);
-    SendKey(xbmcKey, state == wayland::keyboard_key_state::pressed);
+    ConvertAndSendKey(key, state == wayland::keyboard_key_state::pressed);
+  };
+  m_keyboard.on_modifiers() = [this](std::uint32_t serial, std::uint32_t modsDepressed, std::uint32_t modsLatched, std::uint32_t modsLocked, std::uint32_t group)
+  {
+    if (!m_keymap)
+    {
+      CLog::Log(LOGWARNING, "Modifier event without valid keymap, ignoring");
+      return;
+    }
+    
+    m_keymap->UpdateMask(modsDepressed, modsLatched, modsLocked, group);
   };
 }
 
-void CSeatInputProcessor::SendKey(XBMCKey key, bool pressed)
+void CSeatInputProcessor::ConvertAndSendKey(std::uint32_t scancode, bool pressed)
+{
+  std::uint32_t xkbCode = scancode + WL_KEYBOARD_XKB_CODE_OFFSET;
+  XBMCKey xbmcKey = m_keymap->XBMCKeysymForKeycode(xkbCode);
+  std::uint32_t utf32 = m_keymap->UnicodeCodepointForKeycode(xkbCode);
+  
+  if (utf32 > std::numeric_limits<std::uint16_t>::max())
+  {
+    // Kodi event system only supports UTF16, so ignore the codepoint if
+    // it does not fit
+    utf32 = 0;
+  }
+  if (scancode > std::numeric_limits<unsigned char>::max())
+  {
+    // Kodi scancodes are limited to unsigned char, pretend the scancode is unknown
+    // on overflow
+    scancode = 0;
+  }
+
+  SendKey(scancode, xbmcKey, static_cast<std::uint16_t> (utf32), pressed);
+}
+
+void CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed)
 {
   assert(m_keymap);
 
@@ -292,11 +326,10 @@ void CSeatInputProcessor::SendKey(XBMCKey key, bool pressed)
       .keysym =
       {
         // The scancode is a char, which is not enough to hold the value from Wayland anyway
-        .scancode = 0,
+        .scancode = scancode,
         .sym = key,
         .mod = m_keymap->ActiveXBMCModifiers(),
-        // FIXME use proper unicode conversion!
-        .unicode = static_cast<std::uint16_t> (key)
+        .unicode = unicodeCodepoint
       }
     }
   };

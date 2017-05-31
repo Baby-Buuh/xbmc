@@ -48,9 +48,10 @@ public:
   std::uint32_t CurrentModifiers() const;
   XBMCKey XBMCKeysymForKeycode(std::uint32_t code) const;
   XBMCMod ActiveXBMCModifiers() const;
+  std::uint32_t UnicodeCodepointForKeycode(std::uint32_t code) const;
 
   static xkb_context * CreateXkbContext();
-  static xkb_keymap * ReceiveXkbKeymapFromSharedMemory(xkb_context * context, int fd, std::uint32_t size);
+  static xkb_keymap * ReceiveXkbKeymapFromSharedMemory(xkb_context * context, int fd, std::size_t size);
   static xkb_state * CreateXkbStateFromKeymap(xkb_keymap *keymap);
   static xkb_keymap * CreateXkbKeymapFromNames(xkb_context * context, const std::string &rules, const std::string &model, const std::string &layout, const std::string &variant, const std::string &options);
 private:

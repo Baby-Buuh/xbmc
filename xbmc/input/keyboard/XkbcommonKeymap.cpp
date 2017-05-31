@@ -32,6 +32,7 @@
 
 #include "Application.h"
 #include "Util.h"
+#include "utils/log.h"
 
 using namespace KODI::KEYBOARD;
 
@@ -74,30 +75,20 @@ CXkbcommonKeymap::CreateXkbContext()
  * from this function.
  */
 xkb_keymap *
-CXkbcommonKeymap::ReceiveXkbKeymapFromSharedMemory(xkb_context *context, int fd, std::uint32_t size)
+CXkbcommonKeymap::ReceiveXkbKeymapFromSharedMemory(xkb_context *context, int fd, std::size_t size)
 {
-  const char *keymapString = static_cast<const char *>(mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0));
+  const char* keymapString = static_cast<const char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
+  
   if (keymapString == MAP_FAILED)
   {
-    std::stringstream ss;
-    ss << "mmap: " << strerror(errno);
-    throw std::runtime_error(ss.str());
+    throw std::system_error(errno, std::generic_category(), "Error mmap-ing libxkbcommon keymap from provided file descriptor");
   }
 
+  xkb_keymap* keymap = xkb_keymap_new_from_string(context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
 
-  enum xkb_keymap_compile_flags flags =
-    static_cast<enum xkb_keymap_compile_flags>(0);
-  xkb_keymap *keymap =
-    xkb_keymap_new_from_string(context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, flags);
-
-  /* In every exit path, the keymap string memory region must be
-   * unmapped */
-  // FIXME
-  //AtScopeExit(keymapString, size)
-  //{
-    munmap(const_cast<void *>(static_cast<const void *>(keymapString)),
-                              size);
-  //};
+  // Free memory resource
+  munmap(const_cast<void *>(static_cast<const void *>(keymapString)), size);
+  
   
   /* Failure to compile a keymap is a runtime error and the caller
    * should handle it */
@@ -188,10 +179,8 @@ CXkbcommonKeymap::KeysymForKeycode(std::uint32_t code) const
   /* Key the keysyms for a particular keycode. Generally each
    * keycode should only have one symbol, but if it has more than
    * one then we're unable to just get one symbol for it, so that's
-   * a runtime_error which the client needs to handle.
-   * 
-   * Codes sent generally have an offset of 8 */
-  numSyms = xkb_state_key_get_syms(m_state, code + 8, &syms);
+   * a runtime_error which the client needs to handle. */
+  numSyms = xkb_state_key_get_syms(m_state, code, &syms);
 
   if (numSyms == 1)
     return static_cast<std::uint32_t>(syms[0]);
@@ -362,5 +351,11 @@ XBMCKey CXkbcommonKeymap::XBMCKeysymForKeycode(std::uint32_t code) const
 
   return sym;
 }
+
+std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(std::uint32_t code) const
+{
+  return xkb_state_key_get_utf32(m_state, code);
+}
+
 
 #endif
