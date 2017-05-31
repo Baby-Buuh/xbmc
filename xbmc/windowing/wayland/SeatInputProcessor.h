@@ -47,6 +47,7 @@ public:
   virtual void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) {}
   virtual void OnEnter(std::uint32_t seatGlobalName, InputType type) {}
   virtual void OnLeave(std::uint32_t seatGlobalName, InputType type) {}
+  virtual void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) {}
 };
 
 class CSeatInputProcessor
@@ -61,6 +62,8 @@ public:
   {
     return m_name;
   }
+  
+  void ShowOSMouse(bool showPointer);
 
 private:
   void HandleOnCapabilities(wayland::seat_capability caps);

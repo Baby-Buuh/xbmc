@@ -23,11 +23,11 @@
 #include <cassert>
 
 #include "utils/log.h"
-#include "../WinEvents.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
-CConnection::CConnection()
+CConnection::CConnection(IConnectionHandler* handler)
+: m_handler(handler)
 {
   // TODO exception handling
   m_display.reset(new wayland::display_t);
@@ -39,7 +39,7 @@ CConnection::CConnection()
     // TODO Use constants here (integrate with waylandpp)
     if (interface == "wl_compositor")
     {
-      std::uint32_t bindVersion = 1;
+      std::uint32_t bindVersion = 3;
       CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
       m_registry.bind(name, m_compositor, bindVersion);
     }
@@ -49,21 +49,24 @@ CConnection::CConnection()
       CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
       m_registry.bind(name, m_shell, bindVersion);
     }
+    else if (interface == "wl_shm")
+    {
+      std::uint32_t bindVersion = 1;
+      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
+      m_registry.bind(name, m_shm, bindVersion);
+    }
     else if (interface == "wl_seat")
     {
       std::uint32_t bindVersion = 5;
       CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
       wayland::seat_t seat;
       m_registry.bind(name, seat, bindVersion);
-      OnSeatAdded(name, seat);
+      m_handler->OnSeatAdded(name, seat);
     }
   };
   m_registry.on_global_remove() = [this] (std::uint32_t name)
   {
-    if (m_seatHandlers.find(name) != m_seatHandlers.end())
-    {
-      OnSeatRemoved(name);
-    }
+    m_handler->OnSeatRemoved(name);
   };
   
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global interfaces");
@@ -78,25 +81,10 @@ CConnection::CConnection()
   {
     throw std::runtime_error("Missing required wl_shell protocol");
   }
-  if (m_seatHandlers.empty())
+  if (!m_shm)
   {
-    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+    throw std::runtime_error("Missing required wl_shm protocol");
   }
-}
-
-void CConnection::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
-{
-  m_seatHandlers.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
-}
-
-void CConnection::OnSeatRemoved(std::uint32_t name)
-{
-  m_seatHandlers.erase(name);
-}
-
-void CConnection::OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event)
-{
-  CWinEvents::MessagePush(&event);
 }
 
 wayland::display_t& CConnection::GetDisplay()
@@ -117,4 +105,9 @@ wayland::shell_t& CConnection::GetShell()
   return m_shell;
 }
 
+wayland::shm_t& CConnection::GetShm()
+{
+  assert(m_shm);
+  return m_shm;
+}
 

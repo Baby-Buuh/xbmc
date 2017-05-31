@@ -41,7 +41,11 @@ CWinSystemWayland::~CWinSystemWayland()
 bool CWinSystemWayland::InitWindowSystem()
 {
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
-  m_connection.reset(new CConnection);
+  m_connection.reset(new CConnection(this));
+  if (m_seatHandlers.empty())
+  {
+    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+  }
   CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
   return CWinSystemBase::InitWindowSystem();
 }
@@ -109,18 +113,90 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
 bool CWinSystemWayland::Hide()
 {
+  // TODO Support
   return false;
 }
 
 bool CWinSystemWayland::Show(bool raise)
 {
+  // TODO Support
   return true;
 }
 
-void CWinSystemWayland::Register(IDispResource * /*resource*/)
+void CWinSystemWayland::ShowOSMouse(bool show)
 {
+  m_osCursorVisible = show;
 }
 
-void CWinSystemWayland::Unregister(IDispResource * /*resource*/)
+void CWinSystemWayland::LoadDefaultCursor()
 {
+  if (!m_cursorSurface)
+  {
+    // Load default cursor theme and default cursor
+    // Size of 16px is somewhat random
+    // Cursor theme must be kept around since the lifetime of the image buffers
+    // is coupled to it
+    m_cursorTheme = wayland::cursor_theme_t("", 16, m_connection->GetShm());
+    wayland::cursor_t cursor;
+    try
+    {
+      cursor = m_cursorTheme.get_cursor("default");
+    }
+    catch (std::exception& e)
+    {
+      CLog::Log(LOGWARNING, "Could not load default cursor from theme, continuing without OS cursor");
+    }
+    // Just use the first image, do not handle animation
+    m_cursorImage = cursor.image(0);
+    m_cursorBuffer = m_cursorImage.get_buffer();
+    m_cursorSurface = m_connection->GetCompositor().create_surface();
+  }
+  // Attach buffer to a surface - it seems that the compositor may change
+  // the surface when the pointer leaves the surface, so we reattach the buffer each time
+  m_cursorSurface.attach(m_cursorBuffer, 0, 0);
+  m_cursorSurface.damage(0, 0, m_cursorImage.width(), m_cursorImage.height());
+  m_cursorSurface.commit();
+}
+
+void CWinSystemWayland::Register(IDispResource* resource)
+{
+  std::lock_guard<decltype(m_dispResources)> lock;
+  m_dispResources.emplace(resource);
+}
+
+void CWinSystemWayland::Unregister(IDispResource* resource)
+{
+  std::lock_guard<decltype(m_dispResources)> lock;
+  m_dispResources.erase(resource);
+}
+
+void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
+{
+  m_seatHandlers.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
+}
+
+void CWinSystemWayland::OnSeatRemoved(std::uint32_t name)
+{
+  m_seatHandlers.erase(name);
+}
+
+void CWinSystemWayland::OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event)
+{
+  CWinEvents::MessagePush(&event);
+}
+
+void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial)
+{
+  if (m_osCursorVisible)
+  {
+    LoadDefaultCursor();
+    if (m_cursorSurface) // Cursor loading could have failed
+    {
+      pointer.set_cursor(serial, m_cursorSurface, m_cursorImage.hotspot_x(), m_cursorImage.hotspot_y());
+    }
+  }
+  else
+  {
+    pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
+  }
 }

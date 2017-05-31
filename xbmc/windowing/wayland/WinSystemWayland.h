@@ -19,9 +19,15 @@
  */
 #pragma once
 
-#include <wayland-client.hpp>
+#include <mutex>
+#include <set>
 
+#include <wayland-client.hpp>
+#include <wayland-cursor.hpp>
+
+#include "Connection.h"
 #include "windowing/WinSystem.h"
+#include "SeatInputProcessor.h"
 
 class IDispResource;
 
@@ -32,9 +38,7 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CConnection;
-
-class CWinSystemWayland : public CWinSystemBase
+class CWinSystemWayland : public CWinSystemBase, public IInputHandler, public IConnectionHandler
 {
 public:
   CWinSystemWayland();
@@ -57,13 +61,37 @@ public:
 
   bool Hide() override;
   bool Show(bool raise = true) override;
+  
+  void ShowOSMouse(bool show) override;
+  
   virtual void Register(IDispResource *resource);
   virtual void Unregister(IDispResource *resource);
+  
+  // IInputHandler
+  void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
+  void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
+
+  // IConnectionHandler
+  void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
+  void OnSeatRemoved(std::uint32_t name) override;
 
 protected:
+  void LoadDefaultCursor();
+  
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
-  wayland::shell_surface_t m_shellSurface;  
+  wayland::shell_surface_t m_shellSurface;
+  
+  std::map<std::uint32_t, CSeatInputProcessor> m_seatHandlers;
+  
+  bool m_osCursorVisible = true;
+  wayland::cursor_theme_t m_cursorTheme;
+  wayland::buffer_t m_cursorBuffer;
+  wayland::cursor_image_t m_cursorImage;
+  wayland::surface_t m_cursorSurface;
+  
+  std::set<IDispResource*> m_dispResources;
+  std::mutex m_dispResourcesMutex;
 };
 
 

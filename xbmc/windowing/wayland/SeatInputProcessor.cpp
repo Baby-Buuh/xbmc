@@ -148,8 +148,7 @@ void CSeatInputProcessor::HandlePointerCapability()
 {
   m_pointer.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, std::int32_t surfaceX, std::int32_t surfaceY)
   {
-    // TODO honor WinSystemBase OS cursor flag
-    m_pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
+    m_handler->OnSetCursor(m_pointer, serial);
     m_handler->OnEnter(m_globalName, InputType::POINTER);
     m_pointerX = wl_fixed_to_int(surfaceX);
     m_pointerY = wl_fixed_to_int(surfaceY);
@@ -270,6 +269,7 @@ void CSeatInputProcessor::HandleKeyboardCapability()
     {
       if (!m_xkbContext)
       {
+        // Lazily initialize XkbcommonContext
         m_xkbContext.reset(new CXkbcommonContext);
       }
 
@@ -355,5 +355,4 @@ void CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std::uint
 
 void CSeatInputProcessor::HandleTouchCapability()
 {
-  // TODO
 }
