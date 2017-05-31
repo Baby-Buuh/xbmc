@@ -18,6 +18,8 @@
  *
  */
 
+#include <unistd.h>
+
 #include <cassert>
 #include <limits>
 
@@ -259,15 +261,27 @@ void CSeatInputProcessor::HandleKeyboardCapability()
     if (format != wayland::keyboard_keymap_format::xkb_v1)
     {
       CLog::Log(LOGWARNING, "Wayland compositor sent keymap in format %u, but we only understand xkbv1 - keyboard input will not work", format);
+      // File descriptor should always be closed
+      close(fd);
       return;
     }
     
-    if (!m_xkbContext)
+    try
     {
-      m_xkbContext.reset(new CXkbcommonContext);
+      if (!m_xkbContext)
+      {
+        m_xkbContext.reset(new CXkbcommonContext);
+      }
+
+      m_keymap.reset(m_xkbContext->KeymapFromSharedMemory(fd, size));
+    }
+    catch(...)
+    {
+      close(fd);
+      throw;
     }
     
-    m_keymap.reset(m_xkbContext->KeymapFromSharedMemory(fd, size));
+    close(fd);
   };
   m_keyboard.on_key() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t key, wayland::keyboard_key_state state)
   {
