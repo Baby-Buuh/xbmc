@@ -29,6 +29,7 @@
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
+using KODI::KEYBOARD::CXkbcommonContext;
 using KODI::KEYBOARD::CXkbcommonKeymap;
 
 namespace
@@ -99,6 +100,7 @@ int WaylandToXbmcButton(std::uint32_t button)
   }
 }
 
+// Offset between keyboard codes of Wayland (effectively evdev) and xkb_keycode_t
 constexpr int WL_KEYBOARD_XKB_CODE_OFFSET = 8;
 
 }
@@ -259,12 +261,13 @@ void CSeatInputProcessor::HandleKeyboardCapability()
       CLog::Log(LOGWARNING, "Wayland compositor sent keymap in format %u, but we only understand xkbv1 - keyboard input will not work", format);
       return;
     }
-    // FIXME memory handling
     
-    xkb_context* context = CXkbcommonKeymap::CreateXkbContext();
-    xkb_keymap* keymap = CXkbcommonKeymap::ReceiveXkbKeymapFromSharedMemory(context, fd, size);
+    if (!m_xkbContext)
+    {
+      m_xkbContext.reset(new CXkbcommonContext);
+    }
     
-    m_keymap.reset(new CXkbcommonKeymap(keymap));
+    m_keymap.reset(m_xkbContext->KeymapFromSharedMemory(fd, size));
   };
   m_keyboard.on_key() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t key, wayland::keyboard_key_state state)
   {
@@ -291,7 +294,7 @@ void CSeatInputProcessor::HandleKeyboardCapability()
 void CSeatInputProcessor::ConvertAndSendKey(std::uint32_t scancode, bool pressed)
 {
   std::uint32_t xkbCode = scancode + WL_KEYBOARD_XKB_CODE_OFFSET;
-  XBMCKey xbmcKey = m_keymap->XBMCKeysymForKeycode(xkbCode);
+  XBMCKey xbmcKey = m_keymap->XBMCKeyForKeycode(xkbCode);
   std::uint32_t utf32 = m_keymap->UnicodeCodepointForKeycode(xkbCode);
   
   if (utf32 > std::numeric_limits<std::uint16_t>::max())

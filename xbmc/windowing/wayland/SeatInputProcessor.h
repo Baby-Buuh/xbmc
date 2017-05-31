@@ -88,6 +88,7 @@ private:
   std::uint16_t m_pointerX = 0;
   std::uint16_t m_pointerY = 0;
   
+  std::unique_ptr<KEYBOARD::CXkbcommonContext> m_xkbContext;
   std::unique_ptr<KEYBOARD::CXkbcommonKeymap> m_keymap;
 };
 

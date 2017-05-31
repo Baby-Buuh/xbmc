@@ -22,146 +22,258 @@
 
 #include "XkbcommonKeymap.h"
 
-#include <sys/mman.h>
-
-#include <sstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
-
-#include <xkbcommon/xkbcommon.h>
+#include <vector>
 
 #include "Application.h"
 #include "Util.h"
 #include "utils/log.h"
+#include "utils/posix/Mmap.h"
 
 using namespace KODI::KEYBOARD;
+using namespace KODI::UTILS::POSIX;
 
-xkb_context *
-CXkbcommonKeymap::CreateXkbContext()
+namespace
 {
-  enum xkb_context_flags flags =
-    static_cast<enum xkb_context_flags>(0);
 
-  xkb_context *context = xkb_context_new(flags);
+struct ModifierNameXBMCMapping
+{
+  const char* name;
+  XBMCMod xbmc;
+};
+
+static const std::vector<ModifierNameXBMCMapping> ModifierNameXBMCMappings = {
+  { XKB_MOD_NAME_CTRL, XBMCKMOD_LCTRL },
+  { XKB_MOD_NAME_SHIFT, XBMCKMOD_LSHIFT },
+  { XKB_MOD_NAME_LOGO, XBMCKMOD_LSUPER },
+  { XKB_MOD_NAME_ALT, XBMCKMOD_LALT },
+  { "Meta", XBMCKMOD_LMETA },
+  { "RControl", XBMCKMOD_RCTRL },
+  { "RShift", XBMCKMOD_RSHIFT },
+  { "Hyper", XBMCKMOD_RSUPER },
+  { "AltGr", XBMCKMOD_RALT },
+  { XKB_LED_NAME_CAPS, XBMCKMOD_CAPS },
+  { XKB_LED_NAME_NUM, XBMCKMOD_NUM },
+  { XKB_LED_NAME_SCROLL, XBMCKMOD_MODE }
+};
+
+static const std::map<xkb_keycode_t, XBMCKey> XkbKeycodeXBMCMappings = {
+  // Function keys before start of ASCII printable character range
+  { XKB_KEY_BackSpace, XBMCK_BACKSPACE },
+  { XKB_KEY_Tab, XBMCK_TAB },
+  { XKB_KEY_Clear, XBMCK_CLEAR },
+  { XKB_KEY_Return, XBMCK_RETURN },
+  { XKB_KEY_Pause, XBMCK_PAUSE },
+  { XKB_KEY_Escape, XBMCK_ESCAPE },
+
+  // ASCII printable range - not included here
+
+  // Function keys after end of ASCII printable character range
+  { XKB_KEY_Delete, XBMCK_DELETE },
+
+  // Multimedia keys
+  { XKB_KEY_XF86Back, XBMCK_BROWSER_BACK },
+  { XKB_KEY_XF86Forward, XBMCK_BROWSER_FORWARD },
+  { XKB_KEY_XF86Refresh, XBMCK_BROWSER_REFRESH },
+  { XKB_KEY_XF86Stop, XBMCK_BROWSER_STOP },
+  { XKB_KEY_XF86Search, XBMCK_BROWSER_SEARCH },
+  // XKB_KEY_XF86Favorites could be XBMCK_BROWSER_FAVORITES or XBMCK_FAVORITES,
+  // XBMCK_FAVORITES was chosen here because it is more general
+  { XKB_KEY_XF86HomePage, XBMCK_BROWSER_HOME },
+  { XKB_KEY_XF86AudioMute, XBMCK_VOLUME_MUTE },
+  { XKB_KEY_XF86AudioLowerVolume, XBMCK_VOLUME_DOWN },
+  { XKB_KEY_XF86AudioRaiseVolume, XBMCK_VOLUME_UP },
+  { XKB_KEY_XF86AudioNext, XBMCK_MEDIA_NEXT_TRACK },
+  { XKB_KEY_XF86AudioPrev, XBMCK_MEDIA_PREV_TRACK },
+  { XKB_KEY_XF86AudioStop, XBMCK_MEDIA_STOP },
+  { XKB_KEY_XF86AudioPause, XBMCK_MEDIA_PLAY_PAUSE },
+  { XKB_KEY_XF86Mail, XBMCK_LAUNCH_MAIL },
+  { XKB_KEY_XF86Select, XBMCK_LAUNCH_MEDIA_SELECT },
+  { XKB_KEY_XF86Launch0, XBMCK_LAUNCH_APP1 },
+  { XKB_KEY_XF86Launch1, XBMCK_LAUNCH_APP2 },
+  { XKB_KEY_XF86WWW, XBMCK_LAUNCH_FILE_BROWSER },
+  { XKB_KEY_XF86AudioMedia, XBMCK_LAUNCH_MEDIA_CENTER },
+  { XKB_KEY_XF86AudioRewind, XBMCK_MEDIA_REWIND },
+  { XKB_KEY_XF86AudioForward, XBMCK_MEDIA_FASTFORWARD },
+
+  // Numeric keypad
+  { XKB_KEY_KP_0, XBMCK_KP0 },
+  { XKB_KEY_KP_1, XBMCK_KP1 },
+  { XKB_KEY_KP_2, XBMCK_KP2 },
+  { XKB_KEY_KP_3, XBMCK_KP3 },
+  { XKB_KEY_KP_4, XBMCK_KP4 },
+  { XKB_KEY_KP_5, XBMCK_KP5 },
+  { XKB_KEY_KP_6, XBMCK_KP6 },
+  { XKB_KEY_KP_7, XBMCK_KP7 },
+  { XKB_KEY_KP_8, XBMCK_KP8 },
+  { XKB_KEY_KP_9, XBMCK_KP9 },
+  { XKB_KEY_KP_Decimal, XBMCK_KP_PERIOD },
+  { XKB_KEY_KP_Divide, XBMCK_KP_DIVIDE },
+  { XKB_KEY_KP_Multiply, XBMCK_KP_MULTIPLY },
+  { XKB_KEY_KP_Subtract, XBMCK_KP_MINUS },
+  { XKB_KEY_KP_Add, XBMCK_KP_PLUS },
+  { XKB_KEY_KP_Enter, XBMCK_KP_ENTER },
+  { XKB_KEY_KP_Equal, XBMCK_KP_EQUALS },
+
+  // Arrows + Home/End pad
+  { XKB_KEY_Up, XBMCK_UP },
+  { XKB_KEY_Down, XBMCK_DOWN },
+  { XKB_KEY_Right, XBMCK_RIGHT },
+  { XKB_KEY_Left, XBMCK_LEFT },
+  { XKB_KEY_Insert, XBMCK_INSERT },
+  { XKB_KEY_Home, XBMCK_HOME },
+  { XKB_KEY_End, XBMCK_END },
+  { XKB_KEY_Page_Up, XBMCK_PAGEUP },
+  { XKB_KEY_Page_Down, XBMCK_PAGEDOWN },
+
+  // Function keys  
+  { XKB_KEY_F1, XBMCK_F1 },
+  { XKB_KEY_F2, XBMCK_F2 },
+  { XKB_KEY_F3, XBMCK_F3 },
+  { XKB_KEY_F4, XBMCK_F4 },
+  { XKB_KEY_F5, XBMCK_F5 },
+  { XKB_KEY_F6, XBMCK_F6 },
+  { XKB_KEY_F7, XBMCK_F7 },
+  { XKB_KEY_F8, XBMCK_F8 },
+  { XKB_KEY_F9, XBMCK_F9 },
+  { XKB_KEY_F10, XBMCK_F10 },
+  { XKB_KEY_F11, XBMCK_F11 },
+  { XKB_KEY_F12, XBMCK_F12 },
+  { XKB_KEY_F13, XBMCK_F13 },
+  { XKB_KEY_F14, XBMCK_F14 },
+  { XKB_KEY_F15, XBMCK_F15 },
+
+  // Key state modifier keys
+  { XKB_KEY_Num_Lock, XBMCK_NUMLOCK },
+  { XKB_KEY_Caps_Lock, XBMCK_CAPSLOCK },
+  { XKB_KEY_Scroll_Lock, XBMCK_SCROLLOCK },
+  { XKB_KEY_Shift_R, XBMCK_RSHIFT },
+  { XKB_KEY_Shift_L, XBMCK_LSHIFT },
+  { XKB_KEY_Control_R, XBMCK_RCTRL },
+  { XKB_KEY_Control_L, XBMCK_LCTRL },
+  { XKB_KEY_Alt_R, XBMCK_RALT },
+  { XKB_KEY_Alt_L, XBMCK_LALT },
+  { XKB_KEY_Meta_R, XBMCK_RMETA },
+  { XKB_KEY_Meta_L, XBMCK_LMETA },
+  { XKB_KEY_Super_R, XBMCK_RSUPER },
+  { XKB_KEY_Super_L, XBMCK_LSUPER },
+  // XKB does not have XBMCK_MODE/"Alt Gr" - probably equal to XKB_KEY_Alt_R
+  { XKB_KEY_Multi_key, XBMCK_COMPOSE },
   
-  /* It is the object who wants to create an XKBKeymap and not
-   * XKBKeymap itself that owns the xkb_context. The
-   * xkb_context is merely just a detail for construction of the
-   * more interesting xkb_state and xkb_keymap objects.
-   * 
-   * Failure to create the context effectively means that that object
-   * will be unable to create a keymap or serve any useful purpose in
-   * processing key events. As such, it makes this an incomplete
-   * object and a runtime_error will be thrown */
-  if (!context)
-    throw std::runtime_error("Failed to create xkb context");
+  // Miscellaneous function keys
+  { XKB_KEY_Help, XBMCK_HELP },
+  { XKB_KEY_Print, XBMCK_PRINT },
+  // Unmapped: XBMCK_SYSREQ
+  { XKB_KEY_Break, XBMCK_BREAK },
+  { XKB_KEY_Menu, XBMCK_MENU },
+  { XKB_KEY_XF86PowerOff, XBMCK_POWER },
+  { XKB_KEY_EcuSign, XBMCK_EURO },
+  { XKB_KEY_Undo, XBMCK_UNDO },
+  { XKB_KEY_XF86Sleep, XBMCK_SLEEP },
+  // Unmapped: XBMCK_GUIDE, XBMCK_SETTINGS, XBMCK_INFO
+  { XKB_KEY_XF86Red, XBMCK_RED },
+  { XKB_KEY_XF86Green, XBMCK_GREEN },
+  { XKB_KEY_XF86Yellow, XBMCK_YELLOW },
+  { XKB_KEY_XF86Blue, XBMCK_BLUE },
+  // Unmapped: XBMCK_ZOOM, XBMCK_TEXT
+  { XKB_KEY_XF86Favorites, XBMCK_FAVORITES },
+  { XKB_KEY_XF86HomePage, XBMCK_HOMEPAGE },
+  // Unmapped: XBMCK_CONFIG, XBMCK_EPG
   
-  return context;
+  // Media keys
+  { XKB_KEY_XF86Eject, XBMCK_EJECT },
+  // XBMCK_STOP clashes with XBMCK_MEDIA_STOP
+  { XKB_KEY_XF86AudioRecord, XBMCK_RECORD },
+  // XBMCK_REWIND clashes with XBMCK_MEDIA_REWIND
+  { XKB_KEY_XF86Phone, XBMCK_PHONE },
+  { XKB_KEY_XF86AudioPlay, XBMCK_PLAY },
+  { XKB_KEY_XF86AudioRandomPlay, XBMCK_SHUFFLE }
+  // XBMCK_FASTFORWARD clashes with XBMCK_MEDIA_FASTFORWARD
+};
+
 }
 
-/* Opens a shared memory region and parses the data in it to an
- * xkbcommon keymap.
- * 
- * Generally a keymap is determined by the compositor by evaluating
- * the currently available hardware and compiling a keymap
- * most appropriate for that hardware. The compositor simply
- * sends keycodes and modifier bits in the wire protocol. It is the
- * client's responsibility to handle transformation of those hardware
- * specific keycodes and modifier bits into a common keyboard
- * representation. The compositor provides a serialized keymap
- * in shared memory to allow clients to perform these transformations.
- * 
- * This function does not own the file descriptor. It must not be closed
- * from this function.
- */
-xkb_keymap *
-CXkbcommonKeymap::ReceiveXkbKeymapFromSharedMemory(xkb_context *context, int fd, std::size_t size)
+CXkbcommonContext::CXkbcommonContext(xkb_context_flags flags)
+: m_context(xkb_context_new(flags))
 {
-  const char* keymapString = static_cast<const char *>(mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0));
-  
-  if (keymapString == MAP_FAILED)
+  if (!m_context)
   {
-    throw std::system_error(errno, std::generic_category(), "Error mmap-ing libxkbcommon keymap from provided file descriptor");
+    throw std::runtime_error("Failed to create xkb context");
+  }
+}
+
+CXkbcommonContext::~CXkbcommonContext()
+{
+  xkb_context_unref(m_context);
+}
+
+CXkbcommonKeymap*
+CXkbcommonContext::KeymapFromSharedMemory(int fd, std::size_t size)
+{
+  CMmap mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+  auto keymapString = static_cast<const char *> (mmap.data());
+
+  xkb_keymap* keymap = xkb_keymap_new_from_string(m_context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+
+  if (!keymap)
+  {
+    throw std::runtime_error("Failed to compile keymap");
   }
 
-  xkb_keymap* keymap = xkb_keymap_new_from_string(context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
-
-  // Free memory resource
-  munmap(const_cast<void *>(static_cast<const void *>(keymapString)), size);
-  
-  
-  /* Failure to compile a keymap is a runtime error and the caller
-   * should handle it */
-  if (!keymap)
-    throw std::runtime_error("Failed to compile keymap");
-
-  return keymap;
+  return new CXkbcommonKeymap(keymap);
 }
 
-xkb_keymap *
-CXkbcommonKeymap::CreateXkbKeymapFromNames(xkb_context *context, const std::string &rules, const std::string &model, const std::string &layout, const std::string &variant, const std::string &options)
+CXkbcommonKeymap*
+CXkbcommonContext::KeymapFromNames(const std::string& rules, const std::string& model, const std::string& layout, const std::string& variant, const std::string& options)
 {
-  enum xkb_keymap_compile_flags flags =
-    static_cast<enum xkb_keymap_compile_flags>(0);
-  
-  xkb_rule_names names =
-  {
+  xkb_rule_names names = {
     rules.c_str(),
     model.c_str(),
     layout.c_str(),
     variant.c_str(),
     options.c_str()
   };
-  
-  xkb_keymap *keymap =
-    xkb_keymap_new_from_names(context, &names, flags);
+
+  xkb_keymap* keymap = xkb_keymap_new_from_names(m_context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
 
   if (!keymap)
+  {
     throw std::runtime_error("Failed to compile keymap");
+  }
 
-  return keymap;
+  return new CXkbcommonKeymap(keymap);
 }
 
-xkb_state *
-CXkbcommonKeymap::CreateXkbStateFromKeymap(xkb_keymap *keymap)
+xkb_state*
+CXkbcommonKeymap::CreateXkbStateFromKeymap(xkb_keymap* keymap)
 {
   xkb_state *state = xkb_state_new(keymap);
 
   if (!state)
+  {
     throw std::runtime_error("Failed to create keyboard state");
+  }
 
   return state;
 }
 
-/* A wrapper class around an xkbcommon keymap and state tracker.
- * 
- * This class knows about some common modifier combinations and keeps
- * track of the currently pressed keys and modifiers. It also has
- * some utility functions to transform hardware keycodes into
- * a common representation.
- * 
- * Since this class is keeping track of all the pressed and depressed
- * modifiers, IT MUST ALWAYS BE KEPT UP TO DATE WITH ANY NEWLY
- * PRESSED MODIFIERS. Undefined behaviour will result if it is not
- * kept up to date.
- */
-CXkbcommonKeymap::CXkbcommonKeymap(xkb_keymap *keymap) :
-  m_keymap(keymap),
-  m_state(CreateXkbStateFromKeymap(keymap)),
-  m_internalLeftControlIndex(xkb_keymap_mod_get_index(m_keymap, XKB_MOD_NAME_CTRL)),
-  m_internalLeftShiftIndex(xkb_keymap_mod_get_index(m_keymap, XKB_MOD_NAME_SHIFT)),
-  m_internalLeftSuperIndex(xkb_keymap_mod_get_index(m_keymap, XKB_MOD_NAME_LOGO)),
-  m_internalLeftAltIndex(xkb_keymap_mod_get_index(m_keymap, XKB_MOD_NAME_ALT)),
-  m_internalLeftMetaIndex(xkb_keymap_mod_get_index(m_keymap, "Meta")),
-  m_internalRightControlIndex(xkb_keymap_mod_get_index(m_keymap, "RControl")),
-  m_internalRightShiftIndex(xkb_keymap_mod_get_index(m_keymap, "RShift")),
-  m_internalRightSuperIndex(xkb_keymap_mod_get_index(m_keymap, "Hyper")),
-  m_internalRightAltIndex(xkb_keymap_mod_get_index(m_keymap, "AltGr")),
-  m_internalRightMetaIndex(xkb_keymap_mod_get_index(m_keymap, "Meta")),
-  m_internalCapsLockIndex(xkb_keymap_mod_get_index(m_keymap, XKB_LED_NAME_CAPS)),
-  m_internalNumLockIndex(xkb_keymap_mod_get_index(m_keymap, XKB_LED_NAME_NUM)),
-  m_internalModeIndex(xkb_keymap_mod_get_index(m_keymap, XKB_LED_NAME_SCROLL))
+CXkbcommonKeymap::CXkbcommonKeymap(xkb_keymap* keymap)
+:
+m_keymap(keymap),
+m_state(CreateXkbStateFromKeymap(keymap))
 {
+  // Lookup modifier indices and create new map - this is more efficient
+  // than looking the modifiers up by name each time
+  for (auto const& nameMapping : ModifierNameXBMCMappings)
+  {
+    xkb_mod_index_t index = xkb_keymap_mod_get_index(m_keymap, nameMapping.name);
+    if (index != XKB_MOD_INVALID)
+    {
+      m_modifierMappings.emplace_back(index, nameMapping.xbmc);
+    }
+  }
 }
 
 CXkbcommonKeymap::~CXkbcommonKeymap()
@@ -170,48 +282,18 @@ CXkbcommonKeymap::~CXkbcommonKeymap()
   xkb_keymap_unref(m_keymap);
 }
 
-std::uint32_t
-CXkbcommonKeymap::KeysymForKeycode(std::uint32_t code) const
+xkb_keysym_t
+CXkbcommonKeymap::KeysymForKeycode(xkb_keycode_t code) const
 {
-  const xkb_keysym_t *syms;
-  std::uint32_t numSyms;
-
-  /* Key the keysyms for a particular keycode. Generally each
-   * keycode should only have one symbol, but if it has more than
-   * one then we're unable to just get one symbol for it, so that's
-   * a runtime_error which the client needs to handle. */
-  numSyms = xkb_state_key_get_syms(m_state, code, &syms);
-
-  if (numSyms == 1)
-    return static_cast<std::uint32_t>(syms[0]);
-
-  std::stringstream ss;
-  ss << "Pressed key "
-     << std::hex
-     << code
-     << std::dec
-     << " is unspported";
-
-  throw std::runtime_error(ss.str());
+  return xkb_state_key_get_one_sym(m_state, code);
 }
 
-/* Gets the currently depressed, latched and locked modifiers
- * for the keyboard */
-std::uint32_t CXkbcommonKeymap::CurrentModifiers() const
+xkb_mod_mask_t CXkbcommonKeymap::CurrentModifiers() const
 {
-  enum xkb_state_component components =
-    static_cast <xkb_state_component>(XKB_STATE_DEPRESSED |
-                                      XKB_STATE_LATCHED |
-                                      XKB_STATE_LOCKED);
-  xkb_mod_mask_t mask = xkb_state_serialize_mods(m_state, components);
-  return mask;
+  return xkb_state_serialize_mods(m_state, XKB_STATE_MODS_EFFECTIVE);
 }
 
-/* Updates the currently depressed, latched, locked and group
- * modifiers for a keyboard being tracked.
- * 
- * THIS FUNCTION MUST BE CALLED WHENEVER MODIFIERS CHANGE */
-void CXkbcommonKeymap::UpdateMask(std::uint32_t depressed, std::uint32_t latched, std::uint32_t locked, std::uint32_t group)
+void CXkbcommonKeymap::UpdateMask(xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_mod_mask_t group)
 {
   xkb_state_update_mask(m_state, depressed, latched, locked, 0, 0, group);
 }
@@ -220,139 +302,44 @@ XBMCMod CXkbcommonKeymap::ActiveXBMCModifiers() const
 {
   xkb_mod_mask_t mask(CurrentModifiers());
   XBMCMod xbmcModifiers = XBMCKMOD_NONE;
-  
-  struct ModTable
-  {
-    xkb_mod_index_t xkbMod;
-    XBMCMod xbmcMod;
-  } modTable[] =
-  {
-    { m_internalLeftShiftIndex, XBMCKMOD_LSHIFT },
-    { m_internalRightShiftIndex, XBMCKMOD_RSHIFT },
-    { m_internalLeftShiftIndex, XBMCKMOD_LSUPER },
-    { m_internalRightSuperIndex, XBMCKMOD_RSUPER },
-    { m_internalLeftControlIndex, XBMCKMOD_LCTRL },
-    { m_internalRightControlIndex, XBMCKMOD_RCTRL },
-    { m_internalLeftAltIndex, XBMCKMOD_LALT },
-    { m_internalRightAltIndex, XBMCKMOD_RALT },
-    { m_internalLeftMetaIndex, XBMCKMOD_LMETA },
-    { m_internalRightMetaIndex, XBMCKMOD_RMETA },
-    { m_internalNumLockIndex, XBMCKMOD_NUM },
-    { m_internalCapsLockIndex, XBMCKMOD_CAPS },
-    { m_internalModeIndex, XBMCKMOD_MODE }
-  };
 
-  size_t modTableSize = ARRAY_SIZE(modTable);
-
-  for (size_t i = 0; i < modTableSize; ++i)
+  for (auto const& mapping : m_modifierMappings)
   {
-    if (mask & (1 << modTable[i].xkbMod))
-      xbmcModifiers = static_cast<XBMCMod>(xbmcModifiers | modTable[i].xbmcMod);
+    if (mask & (1 << mapping.xkb))
+    {
+      xbmcModifiers = static_cast<XBMCMod> (xbmcModifiers | mapping.xbmc);
+    }
   }
 
   return xbmcModifiers;
 }
 
-XBMCKey CXkbcommonKeymap::XBMCKeysymForKeycode(std::uint32_t code) const
+XBMCKey CXkbcommonKeymap::XBMCKeyForKeysym(xkb_keysym_t sym)
 {
-  // Default: take code as-is for ASCII
-  XBMCKey sym = static_cast<XBMCKey> (KeysymForKeycode(code));
-
-  /* Strip high bits from functional keys */
-  if ((sym & ~(0xff00)) <= 0x1b)
+  if (sym >= 0x20 /* ASCII space */ && sym <= 0x7E /* ASCII tilde */)
   {
-    sym = static_cast<XBMCKey> (sym & ~(0xff00));
-  }
-  else if ((sym & ~(0xff00)) == 0xff)
-  {
-    sym = XBMCK_DELETE;
+    // ASCII printable character range is code-compatible
+    return static_cast<XBMCKey> (sym);
   }
   
-  /* Navigation keys are not in line, so we need to
-   * look them up */
-  static const struct NavigationKeySyms
+  // Try mapping
+  auto mapping = XkbKeycodeXBMCMappings.find(sym);
+  if (mapping != XkbKeycodeXBMCMappings.end())
   {
-    std::uint32_t xkb;
-    XBMCKey xbmc;
-  } navigationKeySyms[] =
-  {
-    { XKB_KEY_Home, XBMCK_HOME },
-    { XKB_KEY_Left, XBMCK_LEFT },
-    { XKB_KEY_Right, XBMCK_RIGHT },
-    { XKB_KEY_Down, XBMCK_DOWN },
-    { XKB_KEY_Up, XBMCK_UP },
-    { XKB_KEY_Page_Up, XBMCK_PAGEUP },
-    { XKB_KEY_Page_Down, XBMCK_PAGEDOWN },
-    { XKB_KEY_End, XBMCK_END },
-    { XKB_KEY_Insert, XBMCK_INSERT },
-    { XKB_KEY_KP_0, XBMCK_KP0 },
-    { XKB_KEY_KP_1, XBMCK_KP1 },
-    { XKB_KEY_KP_2, XBMCK_KP2 },
-    { XKB_KEY_KP_3, XBMCK_KP3 },
-    { XKB_KEY_KP_4, XBMCK_KP4 },
-    { XKB_KEY_KP_5, XBMCK_KP5 },
-    { XKB_KEY_KP_6, XBMCK_KP6 },
-    { XKB_KEY_KP_7, XBMCK_KP7 },
-    { XKB_KEY_KP_8, XBMCK_KP8 },
-    { XKB_KEY_KP_9, XBMCK_KP9 },
-    { XKB_KEY_KP_Decimal, XBMCK_KP_PERIOD },
-    { XKB_KEY_KP_Divide, XBMCK_KP_DIVIDE },
-    { XKB_KEY_KP_Multiply, XBMCK_KP_MULTIPLY },
-    { XKB_KEY_KP_Add, XBMCK_KP_PLUS },
-    { XKB_KEY_KP_Separator, XBMCK_KP_MINUS },
-    { XKB_KEY_KP_Equal, XBMCK_KP_EQUALS },
-    { XKB_KEY_F1, XBMCK_F1 },
-    { XKB_KEY_F2, XBMCK_F2 },
-    { XKB_KEY_F3, XBMCK_F3 },
-    { XKB_KEY_F4, XBMCK_F4 },
-    { XKB_KEY_F5, XBMCK_F5 },
-    { XKB_KEY_F6, XBMCK_F6 },
-    { XKB_KEY_F7, XBMCK_F7 },
-    { XKB_KEY_F8, XBMCK_F8 },
-    { XKB_KEY_F9, XBMCK_F9 },
-    { XKB_KEY_F10, XBMCK_F10 },
-    { XKB_KEY_F11, XBMCK_F11 },
-    { XKB_KEY_F12, XBMCK_F12 },
-    { XKB_KEY_F13, XBMCK_F13 },
-    { XKB_KEY_F14, XBMCK_F14 },
-    { XKB_KEY_F15, XBMCK_F15 },
-    { XKB_KEY_Caps_Lock, XBMCK_CAPSLOCK },
-    { XKB_KEY_Shift_Lock, XBMCK_SCROLLOCK },
-    { XKB_KEY_Shift_R, XBMCK_RSHIFT },
-    { XKB_KEY_Shift_L, XBMCK_LSHIFT },
-    { XKB_KEY_Alt_R, XBMCK_RALT },
-    { XKB_KEY_Alt_L, XBMCK_LALT },
-    { XKB_KEY_Control_R, XBMCK_RCTRL },
-    { XKB_KEY_Control_L, XBMCK_LCTRL },
-    { XKB_KEY_Meta_R, XBMCK_RMETA },
-    { XKB_KEY_Meta_L, XBMCK_LMETA },
-    { XKB_KEY_Super_R, XBMCK_RSUPER },
-    { XKB_KEY_Super_L, XBMCK_LSUPER },
-    { XKB_KEY_XF86Eject, XBMCK_EJECT },
-    { XKB_KEY_XF86AudioStop, XBMCK_STOP },
-    { XKB_KEY_XF86AudioRecord, XBMCK_RECORD },
-    { XKB_KEY_XF86AudioRewind, XBMCK_REWIND },
-    { XKB_KEY_XF86AudioPlay, XBMCK_PLAY },
-    { XKB_KEY_XF86AudioRandomPlay, XBMCK_SHUFFLE },
-    { XKB_KEY_XF86AudioForward, XBMCK_FASTFORWARD }
-  };
-
-  static const size_t navigationKeySymsSize = sizeof(navigationKeySyms) /
-                                              sizeof(navigationKeySyms[0]);
-
-  for (size_t i = 0; i < navigationKeySymsSize; ++i)
-  {
-    if (navigationKeySyms[i].xkb == sym)
-    {
-      sym = navigationKeySyms[i].xbmc;
-      break;
-    }
+    return mapping->second;
   }
-
-  return sym;
+  else
+  {
+    return XBMCK_UNKNOWN;
+  }
 }
 
-std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(std::uint32_t code) const
+XBMCKey CXkbcommonKeymap::XBMCKeyForKeycode(xkb_keycode_t code) const
+{
+  return XBMCKeyForKeysym(KeysymForKeycode(code));
+}
+
+std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(xkb_keycode_t code) const
 {
   return xkb_state_key_get_utf32(m_state, code);
 }
