@@ -68,6 +68,8 @@ public:
   virtual void Unregister(IDispResource *resource);
   
   // IInputHandler
+  void OnEnter(std::uint32_t seatGlobalName, InputType type) override;
+  void OnLeave(std::uint32_t seatGlobalName, InputType type) override;
   void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
 
@@ -77,6 +79,7 @@ public:
 
 protected:
   void LoadDefaultCursor();
+  void SendFocusChange(bool focus);
   
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;

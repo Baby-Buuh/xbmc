@@ -21,6 +21,7 @@
 #include "WinSystemWayland.h"
 
 #include "Connection.h"
+#include "guilib/DispResource.h"
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
 #include "WinEventsWayland.h"
@@ -160,13 +161,13 @@ void CWinSystemWayland::LoadDefaultCursor()
 
 void CWinSystemWayland::Register(IDispResource* resource)
 {
-  std::lock_guard<decltype(m_dispResources)> lock;
+  std::lock_guard<decltype(m_dispResourcesMutex)> lock(m_dispResourcesMutex);
   m_dispResources.emplace(resource);
 }
 
 void CWinSystemWayland::Unregister(IDispResource* resource)
 {
-  std::lock_guard<decltype(m_dispResources)> lock;
+  std::lock_guard<decltype(m_dispResourcesMutex)> lock(m_dispResourcesMutex);
   m_dispResources.erase(resource);
 }
 
@@ -178,6 +179,34 @@ void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 void CWinSystemWayland::OnSeatRemoved(std::uint32_t name)
 {
   m_seatHandlers.erase(name);
+}
+
+void CWinSystemWayland::SendFocusChange(bool focus)
+{
+  std::lock_guard<decltype(m_dispResourcesMutex)> lock(m_dispResourcesMutex);
+  for (auto dispResource : m_dispResources)
+  {
+    dispResource->OnAppFocusChange(focus);
+  }
+}
+
+
+void CWinSystemWayland::OnEnter(std::uint32_t seatGlobalName, InputType type)
+{
+  // Couple to keyboard focus
+  if (type == InputType::KEYBOARD)
+  {
+    SendFocusChange(true);
+  }
+}
+
+void CWinSystemWayland::OnLeave(std::uint32_t seatGlobalName, InputType type)
+{
+  // Couple to keyboard focus
+  if (type == InputType::KEYBOARD)
+  {
+    SendFocusChange(false);
+  }
 }
 
 void CWinSystemWayland::OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event)
