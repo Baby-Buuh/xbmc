@@ -122,8 +122,3 @@ wayland::shm_t& CConnection::GetShm()
   assert(m_shm);
   return m_shm;
 }
-
-const std::list<wayland::output_t>& CConnection::GetOutputs()
-{
-  return m_outputs;
-}
