@@ -63,11 +63,16 @@ bool CWinSystemWayland::InitWindowSystem()
 bool CWinSystemWayland::DestroyWindowSystem()
 {
   DestroyWindow();
+  // wl_display_disconnect frees all proxy objects, so we have to make sure
+  // all stuff is gone on the C++ side before that
   m_cursorSurface = wayland::surface_t();
   m_cursorBuffer = wayland::buffer_t();
   m_cursorImage = wayland::cursor_image_t();
   m_cursorTheme = wayland::cursor_theme_t();
+  m_seatProcessors.clear();
+  m_outputs.clear();
   CWinEventsWayland::SetDisplay(nullptr);
+  
   m_connection.reset();
   return CWinSystemBase::DestroyWindowSystem();
 }
