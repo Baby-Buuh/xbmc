@@ -21,69 +21,81 @@
 #include "Connection.h"
 
 #include <cassert>
+#include <map>
 
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
+
+namespace
+{
+
+void Bind(wayland::registry_t& registry, wayland::proxy_t& target, std::uint32_t name, std::string const& interface, std::uint32_t bindVersion, std::uint32_t offeredVersion)
+{
+  CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, offeredVersion);
+  registry.bind(name, target, bindVersion);
+}
+
+}
 
 CConnection::CConnection(IConnectionHandler* handler)
 : m_handler(handler)
 {
   // TODO exception handling
   m_display.reset(new wayland::display_t);
-    
   m_registry = m_display->get_registry();
   
-  m_registry.on_global() = [this] (std::uint32_t name, std::string interface, std::uint32_t version)
-  {
-    // TODO Use constants here (integrate with waylandpp)
-    if (interface == "wl_compositor")
-    {
-      std::uint32_t bindVersion = 3;
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
-      m_registry.bind(name, m_compositor, bindVersion);
-    }
-    else if (interface == "wl_shell")
-    {
-      std::uint32_t bindVersion = 1;
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
-      m_registry.bind(name, m_shell, bindVersion);
-    }
-    else if (interface == "wl_shm")
-    {
-      std::uint32_t bindVersion = 1;
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
-      m_registry.bind(name, m_shm, bindVersion);
-    }
-    else if (interface == "wl_seat")
-    {
-      std::uint32_t bindVersion = 5;
-      CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, version);
-      wayland::seat_t seat;
-      m_registry.bind(name, seat, bindVersion);
-      m_handler->OnSeatAdded(name, seat);
-    }
+  m_binds = {
+    { "wl_compositor", { m_compositor, 3 } },
+    { "wl_shell", { m_shell, 1 } },
+    { "wl_shm", { m_shm, 1 } }
   };
-  m_registry.on_global_remove() = [this] (std::uint32_t name)
-  {
-    m_handler->OnSeatRemoved(name);
-  };
+
+  HandleRegistry();
   
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global interfaces");
   m_display->roundtrip();
   CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
   
-  if (!m_compositor)
+  CheckRequiredGlobals();
+}
+
+void CConnection::HandleRegistry()
+{
+  m_registry.on_global() = [this] (std::uint32_t name, std::string interface, std::uint32_t version)
+  { 
+    auto it = m_binds.find(interface);
+    if (it != m_binds.end())
+    {
+      Bind(m_registry, it->second.target, name, interface, it->second.bindVersion, version);
+    }
+    else if (interface == "wl_seat")
+    {
+      wayland::seat_t seat;
+      Bind(m_registry, seat, name, interface, 5, version);
+      m_handler->OnSeatAdded(name, seat);
+    }
+    else if (interface == "wl_output")
+    {
+      wayland::output_t output;
+      Bind(m_registry, output, name, interface, 1, version);
+      m_handler->OnOutputAdded(name, output);
+    }
+  };
+  m_registry.on_global_remove() = [this] (std::uint32_t name)
   {
-    throw std::runtime_error("Missing required wl_compositor protocol");
-  }
-  if (!m_shell)
+    m_handler->OnGlobalRemoved(name);
+  };
+}
+
+void CConnection::CheckRequiredGlobals()
+{
+  for (auto const& bind : m_binds)
   {
-    throw std::runtime_error("Missing required wl_shell protocol");
-  }
-  if (!m_shm)
-  {
-    throw std::runtime_error("Missing required wl_shm protocol");
+    if (bind.second.required && !bind.second.target)
+    {
+      throw std::runtime_error(std::string("Missing required ") + bind.first + " protocol");
+    }
   }
 }
 
@@ -111,3 +123,7 @@ wayland::shm_t& CConnection::GetShm()
   return m_shm;
 }
 
+const std::list<wayland::output_t>& CConnection::GetOutputs()
+{
+  return m_outputs;
+}

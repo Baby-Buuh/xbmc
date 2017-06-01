@@ -57,7 +57,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   DestroyWindow();
   CWinEventsWayland::SetDisplay(nullptr);
   m_connection.reset();
-  return true;
+  return CWinSystemBase::DestroyWindowSystem();
 }
 
 bool CWinSystemWayland::CreateNewWindow(const std::string& name,

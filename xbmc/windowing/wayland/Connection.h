@@ -19,6 +19,8 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <list>
 #include <map>
 #include <memory>
 
@@ -36,7 +38,8 @@ class IConnectionHandler
 public:
   virtual ~IConnectionHandler() {}
   virtual void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) {}
-  virtual void OnSeatRemoved(std::uint32_t name) {} 
+  virtual void OnOutputAdded(std::uint32_t name, wayland::output_t& output) {}
+  virtual void OnGlobalRemoved(std::uint32_t name) {}
 };
 
 class CConnection
@@ -48,11 +51,25 @@ public:
   wayland::compositor_t& GetCompositor();
   wayland::shell_t& GetShell();
   wayland::shm_t& GetShm();  
+  std::list<wayland::output_t> const& GetOutputs();
   
 private:
+  void CheckRequiredGlobals();
+  void HandleRegistry();
+  
   IConnectionHandler* m_handler;
   
   std::unique_ptr<wayland::display_t> m_display;
+  
+  struct InterfaceBindInfo
+  {
+    wayland::proxy_t& target;
+    std::uint32_t bindVersion;
+    bool required = true;
+    InterfaceBindInfo(wayland::proxy_t& target, std::uint32_t bindVersion)
+      : target(target), bindVersion(bindVersion) {}
+  };
+  std::map<std::string, InterfaceBindInfo> m_binds;
   
   wayland::registry_t m_registry;
   wayland::compositor_t m_compositor;

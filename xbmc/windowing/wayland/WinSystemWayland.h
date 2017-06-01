@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include <map>
 #include <mutex>
 #include <set>
 
@@ -26,8 +27,8 @@
 #include <wayland-cursor.hpp>
 
 #include "Connection.h"
-#include "windowing/WinSystem.h"
 #include "SeatInputProcessor.h"
+#include "windowing/WinSystem.h"
 
 class IDispResource;
 
@@ -75,7 +76,7 @@ public:
 
   // IConnectionHandler
   void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
-  void OnSeatRemoved(std::uint32_t name) override;
+  void OnGlobalRemoved(std::uint32_t name) override;
 
 protected:
   void LoadDefaultCursor();
