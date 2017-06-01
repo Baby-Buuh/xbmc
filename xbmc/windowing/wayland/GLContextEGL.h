@@ -44,7 +44,7 @@ public:
                      EGLint renderable_type,
                      EGLint rendering_api);
 
-  bool CreateSurface(wayland::surface_t& surface);
+  bool CreateSurface(wayland::surface_t& surface, int width, int height);
   void Resize(int width, int height);
   void DestroySurface();
   void Destroy();

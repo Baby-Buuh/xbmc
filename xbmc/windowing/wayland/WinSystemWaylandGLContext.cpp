@@ -51,7 +51,7 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
     return false;
   }
 
-  if (!m_glContext.CreateSurface(m_surface))
+  if (!m_glContext.CreateSurface(m_surface, res.iWidth, res.iHeight))
   {
     return false;
   }
@@ -75,13 +75,21 @@ bool CWinSystemWaylandGLContext::DestroyWindowSystem()
 
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  auto ret = CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays);
-  if (ret)
+  // Resize the native window so Wayland has a chance of knowing what
+  // size we want
+  m_glContext.Resize(res.iWidth, res.iHeight);
+  
+  if (!CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays))
   {
-    CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
+    return false;
   }
-
-  return ret;
+  
+  if (!CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate))
+  {
+    return false;
+  }
+  
+  return true;
 }
 
 void CWinSystemWaylandGLContext::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
