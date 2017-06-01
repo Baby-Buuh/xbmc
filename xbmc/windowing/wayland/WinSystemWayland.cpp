@@ -25,12 +25,13 @@
 
 #include "Connection.h"
 #include "guilib/DispResource.h"
+#include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/GUIWindowManager.h"
 #include "settings/DisplaySettings.h"
 #include "utils/log.h"
-#include "WinEventsWayland.h"
 #include "utils/StringUtils.h"
-#include "guilib/GraphicContext.h"
+#include "WinEventsWayland.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
@@ -248,6 +249,16 @@ void CWinSystemWayland::HandleSurfaceConfigure(wayland::shell_surface_resize edg
   
   m_nWidth = width;
   m_nHeight = height;
+  // Update desktop resolution
+  auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
+  res.iWidth = width;
+  res.iHeight = height;
+  res.iScreenWidth = width;
+  res.iScreenHeight = height;
+  g_graphicsContext.ResetOverscan(res);
+  CDisplaySettings::GetInstance().ApplyCalibrations();
+  // FIXME how to do this properly?
+  g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
   
   // Mark everything opaque so the compositor can render it faster
   wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
