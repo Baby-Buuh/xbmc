@@ -56,7 +56,10 @@ bool CWinSystemWayland::InitWindowSystem()
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
   }
   // Do another roundtrip to get initial wl_output information
-  m_connection->GetDisplay().roundtrip();
+  if (m_connection->GetDisplay().roundtrip() < 0)
+  {
+    throw std::runtime_error("Wayland roundtrip failed");
+  }
   CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
   return CWinSystemBase::InitWindowSystem();
 }
@@ -345,7 +348,8 @@ void CWinSystemWayland::LoadDefaultCursor()
     m_cursorSurface = m_connection->GetCompositor().create_surface();
   }
   // Attach buffer to a surface - it seems that the compositor may change
-  // the surface when the pointer leaves the surface, so we reattach the buffer each time
+  // the cursor surface when the pointer leaves our surface, so we reattach the
+  // buffer each time
   m_cursorSurface.attach(m_cursorBuffer, 0, 0);
   m_cursorSurface.damage(0, 0, m_cursorImage.width(), m_cursorImage.height());
   m_cursorSurface.commit();

@@ -44,7 +44,7 @@ size_t CWinEventsWayland::GetQueueSize()
 // FIXME Why is the return value of this ignored everywhere?
 bool CWinEventsWayland::MessagePump()
 {
-  // TODO error handling
+  // TODO error handling; should be done in waylandpp
   if (!g_WlDisplay)
   {
     return false;
