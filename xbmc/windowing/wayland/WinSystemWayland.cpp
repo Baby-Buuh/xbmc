@@ -44,7 +44,7 @@ bool CWinSystemWayland::InitWindowSystem()
 {
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection(this));
-  if (m_seatHandlers.empty())
+  if (m_seatProcessors.empty())
   {
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
   }
@@ -175,12 +175,12 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
-  m_seatHandlers.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
+  m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
 }
 
-void CWinSystemWayland::OnSeatRemoved(std::uint32_t name)
+void CWinSystemWayland::OnGlobalRemoved(std::uint32_t name)
 {
-  m_seatHandlers.erase(name);
+  m_seatProcessors.erase(name);
 }
 
 void CWinSystemWayland::SendFocusChange(bool focus)

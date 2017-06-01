@@ -86,7 +86,7 @@ protected:
   wayland::surface_t m_surface;
   wayland::shell_surface_t m_shellSurface;
   
-  std::map<std::uint32_t, CSeatInputProcessor> m_seatHandlers;
+  std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
   
   bool m_osCursorVisible = true;
   wayland::cursor_theme_t m_cursorTheme;
