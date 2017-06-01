@@ -23,126 +23,14 @@
 
 #include <unordered_map>
 #include <mir_toolkit/mir_client_library.h>
-#include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "Application.h"
 #include "input/Key.h"
+#include "input/keyboard/XkbcommonKeymap.h"
 #include "input/MouseStat.h"
 
 namespace
 {
-
-// XkbCommon keysym to xkbmc
-std::unordered_map<uint32_t, uint32_t> sym_mapping_xkb =
-{
-  {XKB_KEY_BackSpace, XBMCK_BACKSPACE}
-, {XKB_KEY_Tab,       XBMCK_TAB}
-, {XKB_KEY_Clear,     XBMCK_CLEAR}
-, {XKB_KEY_Return,    XBMCK_RETURN}
-, {XKB_KEY_Pause,     XBMCK_PAUSE}
-, {XKB_KEY_Escape,    XBMCK_ESCAPE}
-, {XKB_KEY_Delete,    XBMCK_DELETE}
-// multi-media keys
-, {XKB_KEY_XF86Back,      XBMCK_BROWSER_BACK}
-, {XKB_KEY_XF86Forward,   XBMCK_BROWSER_FORWARD}
-, {XKB_KEY_XF86Refresh,   XBMCK_BROWSER_REFRESH}
-, {XKB_KEY_XF86Stop,      XBMCK_BROWSER_STOP}
-, {XKB_KEY_XF86Search,    XBMCK_BROWSER_SEARCH}
-, {XKB_KEY_XF86Favorites, XBMCK_BROWSER_FAVORITES}
-, {XKB_KEY_XF86HomePage,  XBMCK_BROWSER_HOME}
-, {XKB_KEY_XF86AudioMute, XBMCK_VOLUME_MUTE}
-, {XKB_KEY_XF86AudioLowerVolume, XBMCK_VOLUME_DOWN}
-, {XKB_KEY_XF86AudioRaiseVolume, XBMCK_VOLUME_UP}
-, {XKB_KEY_XF86AudioNext,  XBMCK_MEDIA_NEXT_TRACK}
-, {XKB_KEY_XF86AudioPrev,  XBMCK_MEDIA_PREV_TRACK}
-, {XKB_KEY_XF86AudioStop,  XBMCK_MEDIA_STOP}
-, {XKB_KEY_XF86AudioPause, XBMCK_MEDIA_PLAY_PAUSE}
-, {XKB_KEY_XF86Mail,       XBMCK_LAUNCH_MAIL}
-, {XKB_KEY_XF86Select,     XBMCK_LAUNCH_MEDIA_SELECT}
-, {XKB_KEY_XF86Launch0,    XBMCK_LAUNCH_APP1}
-, {XKB_KEY_XF86Launch1,    XBMCK_LAUNCH_APP2}
-, {XKB_KEY_XF86WWW,        XBMCK_LAUNCH_FILE_BROWSER}
-, {XKB_KEY_XF86AudioMedia, XBMCK_LAUNCH_MEDIA_CENTER }
-  // Numeric keypad
-, {XKB_KEY_KP_0, XBMCK_KP0}
-, {XKB_KEY_KP_1, XBMCK_KP1}
-, {XKB_KEY_KP_2, XBMCK_KP2}
-, {XKB_KEY_KP_3, XBMCK_KP3}
-, {XKB_KEY_KP_4, XBMCK_KP4}
-, {XKB_KEY_KP_5, XBMCK_KP5}
-, {XKB_KEY_KP_6, XBMCK_KP6}
-, {XKB_KEY_KP_7, XBMCK_KP7}
-, {XKB_KEY_KP_8, XBMCK_KP8}
-, {XKB_KEY_KP_9, XBMCK_KP9}
-, {XKB_KEY_KP_Decimal,  XBMCK_KP_PERIOD}
-, {XKB_KEY_KP_Divide,   XBMCK_KP_DIVIDE}
-, {XKB_KEY_KP_Multiply, XBMCK_KP_MULTIPLY}
-, {XKB_KEY_KP_Subtract, XBMCK_KP_MINUS}
-, {XKB_KEY_KP_Add,   XBMCK_KP_PLUS}
-, {XKB_KEY_KP_Enter, XBMCK_KP_ENTER}
-, {XKB_KEY_KP_Equal, XBMCK_KP_EQUALS}
-  // Arrows + Home/End pad
-, {XKB_KEY_Up,     XBMCK_UP}
-, {XKB_KEY_Down,   XBMCK_DOWN}
-, {XKB_KEY_Right,  XBMCK_RIGHT}
-, {XKB_KEY_Left,   XBMCK_LEFT}
-, {XKB_KEY_Insert, XBMCK_INSERT}
-, {XKB_KEY_Home,   XBMCK_HOME}
-, {XKB_KEY_End,    XBMCK_END}
-, {XKB_KEY_Page_Up,   XBMCK_PAGEUP}
-, {XKB_KEY_Page_Down, XBMCK_PAGEDOWN}
-  // Function keys
-, {XKB_KEY_F1, XBMCK_F1}
-, {XKB_KEY_F2, XBMCK_F2}
-, {XKB_KEY_F3, XBMCK_F3}
-, {XKB_KEY_F4, XBMCK_F4}
-, {XKB_KEY_F5, XBMCK_F5}
-, {XKB_KEY_F6, XBMCK_F6}
-, {XKB_KEY_F7, XBMCK_F7}
-, {XKB_KEY_F8, XBMCK_F8}
-, {XKB_KEY_F9, XBMCK_F9}
-, {XKB_KEY_F10, XBMCK_F10}
-, {XKB_KEY_F11, XBMCK_F11}
-, {XKB_KEY_F12, XBMCK_F12}
-, {XKB_KEY_F13, XBMCK_F13}
-, {XKB_KEY_F14, XBMCK_F14}
-, {XKB_KEY_F15, XBMCK_F15}
-  // Key state modifier keys
-, {XKB_KEY_Num_Lock,    XBMCK_NUMLOCK}
-, {XKB_KEY_Caps_Lock,   XBMCK_CAPSLOCK}
-, {XKB_KEY_Scroll_Lock, XBMCK_SCROLLOCK}
-, {XKB_KEY_Shift_R,   XBMCK_RSHIFT}
-, {XKB_KEY_Shift_L,   XBMCK_LSHIFT}
-, {XKB_KEY_Control_R, XBMCK_RCTRL}
-, {XKB_KEY_Control_L, XBMCK_LCTRL}
-, {XKB_KEY_Alt_R,   XBMCK_RALT}
-, {XKB_KEY_Alt_L,   XBMCK_LALT}
-, {XKB_KEY_Meta_R,  XBMCK_RMETA}
-, {XKB_KEY_Meta_L,  XBMCK_LMETA}
-, {XKB_KEY_Super_L, XBMCK_LSUPER}
-, {XKB_KEY_Super_R, XBMCK_RSUPER}
-, {XKB_KEY_Mode_switch, XBMCK_MODE}
-, {XKB_KEY_Multi_key,   XBMCK_COMPOSE}
-  // Miscellaneous function keys
-, {XKB_KEY_Help,  XBMCK_HELP}
-, {XKB_KEY_Print, XBMCK_PRINT}
-  //, {0, XBMCK_SYSREQ}
-, {XKB_KEY_Break, XBMCK_BREAK}
-, {XKB_KEY_Menu,  XBMCK_MENU}
-, {XKB_KEY_XF86PowerOff, XBMCK_POWER}
-, {XKB_KEY_XF86Sleep, XBMCK_SLEEP}
-, {XKB_KEY_EcuSign,   XBMCK_EURO}
-, {XKB_KEY_Undo,      XBMCK_UNDO}
-  // Media keys
-, {XKB_KEY_XF86Eject,  XBMCK_EJECT}
-, {XKB_KEY_XF86Stop,   XBMCK_STOP}
-, {XKB_KEY_XF86AudioRecord, XBMCK_RECORD}
-, {XKB_KEY_XF86AudioRewind, XBMCK_REWIND}
-, {XKB_KEY_XF86Phone,     XBMCK_PHONE}
-, {XKB_KEY_XF86AudioPlay, XBMCK_PLAY}
-, {XKB_KEY_XF86AudioRandomPlay, XBMCK_SHUFFLE}
-, {XKB_KEY_XF86AudioForward,    XBMCK_FASTFORWARD}
-};
 
 void MirHandlePointerButton(MirPointerEvent const* pev, unsigned char state, unsigned char type)
 {
@@ -269,14 +157,14 @@ void MirHandleKeyboardEvent(MirKeyboardEvent const* kev)
     new_event.type = XBMC_KEYUP;
   }
 
-  auto keysym = mir_keyboard_event_key_code(kev);
-  auto xkb_keysym = sym_mapping_xkb.find(keysym);
-  if (xkb_keysym != sym_mapping_xkb.end())
+  auto xkb_keysym = mir_keyboard_event_key_code(kev);
+  auto keysym = KODI::KEYBOARD::CXkbCommon::XBMCKeyForKeysym(xkb_keysym);
+  if (keysym == XBMCK_UNKNOWN)
   {
-    keysym = xkb_keysym->second;
+    return;
   }
 
-  new_event.key.keysym.sym = XBMCKey(keysym);
+  new_event.key.keysym.sym = keysym;
   new_event.key.keysym.mod = MirModToXBMCMode(mir_keyboard_event_modifiers(kev));
   new_event.key.keysym.scancode = mir_keyboard_event_scan_code(kev);
 
