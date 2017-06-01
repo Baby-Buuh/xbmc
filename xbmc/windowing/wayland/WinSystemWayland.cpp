@@ -27,6 +27,7 @@
 #include "WinEventsWayland.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
+using namespace std::placeholders;
 
 CWinSystemWayland::CWinSystemWayland() :
 CWinSystemBase()
@@ -71,6 +72,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   m_shellSurface.set_class("kodi");
   m_shellSurface.set_title(name);
   m_shellSurface.set_toplevel();
+  m_shellSurface.on_ping() = std::bind(&wayland::shell_surface_t::pong, &m_shellSurface, _1);
   
   return true;
 }
