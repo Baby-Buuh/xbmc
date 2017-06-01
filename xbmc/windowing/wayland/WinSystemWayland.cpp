@@ -116,13 +116,13 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
 bool CWinSystemWayland::Hide()
 {
-  // TODO Support
+  // wl_shell_surface does not really support this - wait for xdg_shell
   return false;
 }
 
 bool CWinSystemWayland::Show(bool raise)
 {
-  // TODO Support
+  // wl_shell_surface does not really support this - wait for xdg_shell
   return true;
 }
 
