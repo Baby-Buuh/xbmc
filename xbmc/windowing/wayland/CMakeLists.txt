@@ -1,4 +1,5 @@
 set(SOURCES Connection.cpp
+            Output.cpp
             GLContextEGL.cpp
             SeatInputProcessor.cpp
             WinEventsWayland.cpp
@@ -6,6 +7,7 @@ set(SOURCES Connection.cpp
             WinSystemWaylandGLContext.cpp)
 
 set(HEADERS Connection.h
+            Output.h
             GLContextEGL.h
             SeatInputProcessor.h
             WinEventsWayland.h

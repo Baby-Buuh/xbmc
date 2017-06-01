@@ -75,15 +75,26 @@ bool CWinSystemWaylandGLContext::DestroyWindowSystem()
 
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  CLog::Log(LOGDEBUG, "SetFullScreen: %dx%d", res.iWidth, res.iHeight);
-
   auto ret = CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays);
   if (ret)
   {
-    CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, 0);
+    CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
   }
 
   return ret;
+}
+
+void CWinSystemWaylandGLContext::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
+{
+  // Wayland will tell us here the size of the surface that was actually created,
+  // which might be different from what we expected e.g. when fullscreening
+  // on an output we chose - the compositor might have decided to use a different
+  // output for example
+  // It is very important that the EGL native module and the rendering system use the
+  // Wayland-announced size for rendering or corrupted graphics output will result.
+  m_glContext.Resize(width, height);
+  CWinSystemWayland::HandleSurfaceConfigure(edges, width, height);
+  CRenderSystemGL::ResetRenderSystem(width, height, m_bFullScreen, m_fRefreshRate);
 }
 
 void CWinSystemWaylandGLContext::SetVSyncImpl(bool enable)

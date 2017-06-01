@@ -27,6 +27,7 @@
 #include <wayland-cursor.hpp>
 
 #include "Connection.h"
+#include "Output.h"
 #include "SeatInputProcessor.h"
 #include "windowing/WinSystem.h"
 
@@ -59,7 +60,10 @@ public:
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
 
   void UpdateResolutions() override;
+  int GetNumScreens() override;
+  int GetCurrentScreen() override;
 
+  bool CanDoWindowed() override;
   bool Hide() override;
   bool Show(bool raise = true) override;
   
@@ -76,17 +80,22 @@ public:
 
   // IConnectionHandler
   void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
+  void OnOutputAdded(std::uint32_t name, wayland::output_t& output) override;
   void OnGlobalRemoved(std::uint32_t name) override;
 
 protected:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
+  virtual void HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height);
+  
+  std::string UserFriendlyOutputName(COutput const& output);
   
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
   wayland::shell_surface_t m_shellSurface;
   
   std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
+  std::map<std::uint32_t, COutput> m_outputs;
   
   bool m_osCursorVisible = true;
   wayland::cursor_theme_t m_cursorTheme;
@@ -96,6 +105,8 @@ protected:
   
   std::set<IDispResource*> m_dispResources;
   std::mutex m_dispResourcesMutex;
+  
+  int m_currentScreen = 0;
 };
 
 

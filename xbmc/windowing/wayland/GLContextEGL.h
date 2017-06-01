@@ -45,6 +45,7 @@ public:
                      EGLint rendering_api);
 
   bool CreateSurface(wayland::surface_t& surface);
+  void Resize(int width, int height);
   void DestroySurface();
   void Destroy();
   void SetVSync(bool enable);
@@ -59,6 +60,9 @@ public:
   EGLConfig m_eglConfig = nullptr;
   
 private:
+  CGLContextEGL(CGLContextEGL const& other) = delete;
+  CGLContextEGL& operator=(CGLContextEGL const& other) = delete;
+  
   std::set<std::string> m_clientExtensions;
   
   PFNEGLGETPLATFORMDISPLAYEXTPROC m_eglGetPlatformDisplayEXT = nullptr;

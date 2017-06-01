@@ -108,8 +108,9 @@ bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
 
 bool CGLContextEGL::CreateSurface(wayland::surface_t& surface)
 {
+  // FIXME size
   m_nativeWindow = wayland::egl_window_t(surface, 1280, 720);
-
+    
   m_eglSurface = eglCreateWindowSurface(m_eglDisplay, m_eglConfig, m_nativeWindow, nullptr);
   // FIXME
   //m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
@@ -143,6 +144,11 @@ bool CGLContextEGL::CreateSurface(wayland::surface_t& surface)
   }
 
   return true;
+}
+
+void CGLContextEGL::Resize(int width, int height)
+{
+  m_nativeWindow.resize(width, height, 0, 0);
 }
 
 void CGLContextEGL::Destroy()
