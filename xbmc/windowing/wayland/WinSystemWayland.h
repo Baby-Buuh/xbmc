@@ -67,6 +67,7 @@ public:
   bool Hide() override;
   bool Show(bool raise = true) override;
   
+  bool HasCursor() override;
   void ShowOSMouse(bool show) override;
   
   virtual void Register(IDispResource *resource);

@@ -291,6 +291,15 @@ bool CWinSystemWayland::Show(bool raise)
   return true;
 }
 
+bool CWinSystemWayland::HasCursor()
+{
+  return std::any_of(m_seatProcessors.cbegin(), m_seatProcessors.cend(),
+                     [](decltype(m_seatProcessors)::value_type const& entry)
+                     {
+                       return entry.second.HasPointerCapability();
+                     });
+}
+
 void CWinSystemWayland::ShowOSMouse(bool show)
 {
   m_osCursorVisible = show;

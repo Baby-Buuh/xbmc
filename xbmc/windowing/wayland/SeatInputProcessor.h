@@ -58,14 +58,27 @@ public:
   {
     return m_globalName;
   }
-  std::string GetName() const
+  std::string const& GetName() const
   {
     return m_name;
   }
-  
-  void ShowOSMouse(bool showPointer);
+  bool HasPointerCapability() const
+  {
+    return m_pointer;
+  }
+  bool HasKeyboardCapability() const
+  {
+    return m_keyboard;
+  }
+  bool HasTouchCapability() const
+  {
+    return m_touch;
+  }
 
 private:
+  CSeatInputProcessor(CSeatInputProcessor const& other) = delete;
+  CSeatInputProcessor& operator=(CSeatInputProcessor const& other) = delete;
+  
   void HandleOnCapabilities(wayland::seat_capability caps);
   void HandlePointerCapability();
   void HandleKeyboardCapability();
