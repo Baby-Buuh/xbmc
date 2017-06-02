@@ -21,8 +21,6 @@
 #include "EGLUtils.h"
 #include "log.h"
 
-#if defined(HAVE_LIBEGL)
-
 std::set<std::string> CEGLUtils::GetClientExtensions()
 {
   const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
@@ -39,6 +37,3 @@ void CEGLUtils::LogError(const std::string& what)
 {
   CLog::Log(LOGERROR, "%s (EGL error %d)", what.c_str(), eglGetError());
 }
-
-
-#endif

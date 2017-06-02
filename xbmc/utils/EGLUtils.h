@@ -19,8 +19,6 @@
  */
 #pragma once
 
-#if defined(HAVE_LIBEGL)
-
 #include <set>
 #include <string>
 #include <stdexcept>
@@ -48,5 +46,3 @@ public:
 private:
   CEGLUtils();
 };
-
-#endif

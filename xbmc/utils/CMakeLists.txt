@@ -14,7 +14,6 @@ set(SOURCES ActorProtocol.cpp
             CPUInfo.cpp
             Crc32.cpp
             DatabaseUtils.cpp
-            EGLUtils.cpp
             EndianSwap.cpp
             Environment.cpp
             Fanart.cpp
@@ -93,7 +92,6 @@ set(HEADERS ActorProtocol.h
             CPUInfo.h
             Crc32.h
             DatabaseUtils.h
-            EGLUtils.h
             EndianSwap.h
             Environment.h
             EventStream.h
@@ -173,6 +171,10 @@ set(HEADERS ActorProtocol.h
 if(XSLT_FOUND)
   list(APPEND SOURCES XSLTUtils.cpp)
   list(APPEND HEADERS XSLTUtils.h)
+endif()
+if(EGL_FOUND)
+  list(APPEND SOURCES EGLUtils.cpp)
+  list(APPEND HEADERS EGLUtils.h)
 endif()
 
 # The large map trips the clang optimizer
