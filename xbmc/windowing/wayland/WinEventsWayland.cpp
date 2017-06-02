@@ -84,9 +84,3 @@ void CWinEventsWayland::MessagePush(XBMC_Event* ev)
   // so no locking is necessary
   m_queue.emplace(*ev);
 }
-
-void CWinEventsWayland::Notify(const Observable& obs, const ObservableMessage msg)
-{
-
-}
-

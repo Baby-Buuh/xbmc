@@ -37,7 +37,6 @@ class CWinEventsWayland : public IWinEvents
 public:
   virtual std::size_t GetQueueSize() override;
   virtual bool MessagePump() override;
-  virtual void Notify(const Observable& obs, const ObservableMessage msg) override;
   virtual void MessagePush(XBMC_Event* ev) override;
   
 private:
