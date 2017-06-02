@@ -134,24 +134,9 @@ public:
    \param delimiter Delimiter to be used to split the input string
    \param iMaxStrings (optional) Maximum number of splitted strings
    */
-  static std::vector<std::string> Split(const std::string& input, const std::string& delimiter, unsigned int iMaxStrings = 0)
-  {
-    std::vector<std::string> result;
-    SplitTo(std::back_inserter(result), input, delimiter, iMaxStrings);
-    return result;
-  }
-  static std::vector<std::string> Split(const std::string& input, const char delimiter, size_t iMaxStrings = 0)
-  {
-    std::vector<std::string> result;
-    SplitTo(std::back_inserter(result), input, delimiter, iMaxStrings);
-    return result;
-  }
-  static std::vector<std::string> Split(const std::string& input, const std::vector<std::string> &delimiters)
-  {
-    std::vector<std::string> result;
-    SplitTo(std::back_inserter(result), input, delimiters);
-    return result;
-  }
+  static std::vector<std::string> Split(const std::string& input, const std::string& delimiter, unsigned int iMaxStrings = 0);
+  static std::vector<std::string> Split(const std::string& input, const char delimiter, size_t iMaxStrings = 0);
+  static std::vector<std::string> Split(const std::string& input, const std::vector<std::string> &delimiters);
   /*! \brief Splits the given input string using the given delimiter into separate strings.
 
    If the given input string is empty nothing will be put into the target iterator.
