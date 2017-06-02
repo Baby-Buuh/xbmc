@@ -18,8 +18,6 @@
  *
  */
 
-#if defined(HAVE_XKBCOMMON)
-
 #include "XkbcommonKeymap.h"
 
 #include <iostream>
@@ -32,7 +30,7 @@
 #include "utils/log.h"
 #include "utils/posix/Mmap.h"
 
-using namespace KODI::KEYBOARD;
+using namespace KODI::WINDOWING;
 using namespace KODI::UTILS::POSIX;
 
 namespace
@@ -343,6 +341,3 @@ std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(xkb_keycode_t code) c
 {
   return xkb_state_key_get_utf32(m_state, code);
 }
-
-
-#endif

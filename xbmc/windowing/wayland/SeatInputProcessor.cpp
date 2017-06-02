@@ -31,8 +31,6 @@
 #include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
-using KODI::KEYBOARD::CXkbcommonContext;
-using KODI::KEYBOARD::CXkbcommonKeymap;
 
 namespace
 {

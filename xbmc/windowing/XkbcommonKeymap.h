@@ -19,8 +19,6 @@
  */
 #pragma once
 
-#if defined(HAVE_XKBCOMMON)
-
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -31,7 +29,7 @@
 
 namespace KODI
 {
-namespace KEYBOARD
+namespace WINDOWING
 {
 
 /**
@@ -148,5 +146,3 @@ private:
 
 }
 }
-
-#endif
