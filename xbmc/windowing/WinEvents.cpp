@@ -39,7 +39,7 @@
 #include "android/WinEventsAndroid.h"
 #define WinEventsType CWinEventsAndroid
 
-#elif defined(TARGET_LINUX) && defined(HAVE_WAYLAND)
+#elif defined(HAVE_WAYLAND)
 #include "wayland/WinEventsWayland.h"
 #define WinEventsType KODI::WINDOWING::WAYLAND::CWinEventsWayland
 
