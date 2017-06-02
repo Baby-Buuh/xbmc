@@ -214,12 +214,11 @@ void CSeatInputProcessor::SendMouseMotion()
       .type = XBMC_MOUSEMOTION,
       // Could use different values for different seats, but this does not seem to be used anyway
       .which = 0,
-      // Relative movement is not available without pointer confinement
-      .xrel = 0, .yrel = 0,
-
       .state = m_pointerButtonState,
       .x = m_pointerX,
-      .y = m_pointerY
+      .y = m_pointerY,
+      // Relative movement is not available without pointer confinement
+      .xrel = 0, .yrel = 0
     }
   };
   m_handler->OnEvent(m_globalName, InputType::POINTER, event);
@@ -231,9 +230,9 @@ void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
     .button =
     {
       .type = static_cast<unsigned char> (pressed ? XBMC_MOUSEBUTTONDOWN : XBMC_MOUSEBUTTONUP),
+      .which = 0,
       .button = button,
       // Could use different values for different seats, but this does not seem to be used anyway
-      .which = 0,
       // FIXME How is this different from type?
       .state = static_cast<unsigned char> (pressed ? XBMC_PRESSED : XBMC_RELEASED),
       .x = m_pointerX,
