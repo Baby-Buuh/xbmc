@@ -27,7 +27,7 @@ find_library(WAYLANDPP_EGL_LIBRARY NAMES wayland-egl++
                                    PATHS ${PC_WAYLANDPP_LIBRARIES} ${PC_WAYLANDPP_LIBRARY_DIRS})
 
 include (FindPackageHandleStandardArgs)
-find_package_handle_standard_args (WAYLANDPP
+find_package_handle_standard_args (Waylandpp
   REQUIRED_VARS
   WAYLANDPP_INCLUDE_DIR
   WAYLANDPP_CLIENT_LIBRARY
