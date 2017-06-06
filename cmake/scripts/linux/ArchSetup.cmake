@@ -44,11 +44,3 @@ endif()
 if(ENABLE_MIR)
   set(ENABLE_VDPAU OFF CACHE BOOL "Disabling VDPAU since no Mir support" FORCE)
 endif()
-
-string(TOLOWER ${CORE_PLATFORM_NAME} CORE_PLATFORM_NAME_LC)
-# Temporary solution until Linux build system and feature configuration is reworked
-if(CORE_PLATFORM_NAME_LC STREQUAL "wayland")
-  message(STATUS "Disabling VDPAU and VA-API due to missing Wayland support")
-  set(ENABLE_VDPAU OFF CACHE BOOL "Disabling VDPAU due to missing Wayland support" FORCE)
-  set(ENABLE_VAAPI OFF CACHE BOOL "Disabling VAAPI due to missing Wayland support" FORCE)
-endif()
