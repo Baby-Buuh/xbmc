@@ -22,6 +22,7 @@
 
 #include "utils/EGLUtils.h"
 #include "utils/log.h"
+#include "utils/TimeUtils.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -190,13 +191,10 @@ void CGLContextEGL::SwapBuffers()
   if (m_eglDisplay == EGL_NO_DISPLAY || m_eglSurface == EGL_NO_SURFACE)
     return;
 
-  auto eglGetSyncValuesCHROMIUM = CEGLUtils::GetRequiredProcAddress<PFNEGLGETSYNCVALUESCHROMIUMPROC>("eglGetSyncValuesCHROMIUM");
-  EGLuint64CHROMIUM ust, msc, sbc;
-  eglGetSyncValuesCHROMIUM(m_eglDisplay, m_eglSurface, &ust, &msc, &sbc);
-  CLog::Log(LOGDEBUG, ">>> before swap: ust %lu, msc %lu, sbc %lu", ust, msc, sbc);
+  auto t1 = CurrentHostCounter();
   eglSwapBuffers(m_eglDisplay, m_eglSurface);
-  eglGetSyncValuesCHROMIUM(m_eglDisplay, m_eglSurface, &ust, &msc, &sbc);
-  CLog::Log(LOGDEBUG, "<<<  after swap: ust %lu, msc %lu, sbc %lu", ust, msc, sbc);
+  auto t2 = CurrentHostCounter();
+  CLog::Log(LOGDEBUG, "time in eglSwapBuffers: %f", (t2 - t1)/ 1000000000.0f);
 }
 
 bool CGLContextEGL::IsExtSupported(const char* extension) const
