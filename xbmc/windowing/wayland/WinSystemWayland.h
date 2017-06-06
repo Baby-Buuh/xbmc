@@ -33,6 +33,8 @@
 
 class IDispResource;
 
+namespace VAAPI { class CVAAPIContext; }
+
 namespace KODI
 {
 namespace WINDOWING
@@ -90,6 +92,10 @@ protected:
   virtual void HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height);
   
   std::string UserFriendlyOutputName(COutput const& output);
+  
+  // For VAAPI
+  wayland::display_t* GetWaylandDisplay();
+  friend class ::VAAPI::CVAAPIContext;
   
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;

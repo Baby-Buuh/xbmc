@@ -433,3 +433,12 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
     pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
   }
 }
+
+wayland::display_t* CWinSystemWayland::GetWaylandDisplay()
+{
+  if (!m_connection)
+  {
+    return nullptr;
+  }
+  return &m_connection->GetDisplay();
+}

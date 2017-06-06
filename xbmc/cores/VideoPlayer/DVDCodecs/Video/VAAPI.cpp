@@ -48,6 +48,9 @@ extern "C" {
 #ifdef HAVE_X11
 #include <va/va_x11.h>
 #endif
+#if defined(HAVE_WAYLAND)
+#include <va/va_wayland.h>
+#endif
 
 #include <va/va_vpp.h>
 #include <xf86drm.h>
@@ -170,21 +173,33 @@ void CVAAPIContext::SetValidDRMVaDisplayFromRenderNode()
 void CVAAPIContext::SetVaDisplayForSystem()
 {
   auto win_system = g_Windowing.GetWinSystem();
-  if (win_system == WINDOW_SYSTEM_X11)
+  switch (win_system)
   {
-#if HAVE_X11
-    { CSingleLock lock(g_graphicsContext);
+#if defined(HAVE_X11)
+    case WINDOW_SYSTEM_X11:
+    {
+      CSingleLock lock(g_graphicsContext);
       if (m_X11dpy == nullptr)
         m_X11dpy = XOpenDisplay(nullptr);
     }
-
     m_display = vaGetDisplay(m_X11dpy);
+    break;
 #endif
-  }
-  else
-  {
-    // Render nodes depends on kernel >= 3.15
-    SetValidDRMVaDisplayFromRenderNode();
+#if defined(HAVE_WAYLAND)
+    case WINDOW_SYSTEM_WAYLAND:
+    { 
+      wayland::display_t* waylandDisplay = g_Windowing.GetWaylandDisplay();
+      if (waylandDisplay)
+      {
+        m_display = vaGetDisplayWl(reinterpret_cast<wl_display*> (waylandDisplay->c_ptr()));
+      }
+    }
+    break;
+#endif
+    
+    default:
+      // Render nodes depends on kernel >= 3.15
+      SetValidDRMVaDisplayFromRenderNode();      
   }
 }
 
