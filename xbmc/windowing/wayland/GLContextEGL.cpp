@@ -190,7 +190,13 @@ void CGLContextEGL::SwapBuffers()
   if (m_eglDisplay == EGL_NO_DISPLAY || m_eglSurface == EGL_NO_SURFACE)
     return;
 
+  auto eglGetSyncValuesCHROMIUM = CEGLUtils::GetRequiredProcAddress<PFNEGLGETSYNCVALUESCHROMIUMPROC>("eglGetSyncValuesCHROMIUM");
+  EGLuint64CHROMIUM ust, msc, sbc;
+  eglGetSyncValuesCHROMIUM(m_eglDisplay, m_eglSurface, &ust, &msc, &sbc);
+  CLog::Log(LOGDEBUG, ">>> before swap: ust %lu, msc %lu, sbc %lu", ust, msc, sbc);
   eglSwapBuffers(m_eglDisplay, m_eglSurface);
+  eglGetSyncValuesCHROMIUM(m_eglDisplay, m_eglSurface, &ust, &msc, &sbc);
+  CLog::Log(LOGDEBUG, "<<<  after swap: ust %lu, msc %lu, sbc %lu", ust, msc, sbc);
 }
 
 bool CGLContextEGL::IsExtSupported(const char* extension) const
