@@ -41,7 +41,7 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWayland : public CWinSystemBase, public IInputHandler, public IConnectionHandler
+class CWinSystemWayland : public CWinSystemBase, IInputHandler, IConnectionHandler
 {
 public:
   CWinSystemWayland();
@@ -77,6 +77,16 @@ public:
   virtual void Register(IDispResource *resource);
   virtual void Unregister(IDispResource *resource);
   
+  // Like CWinSystemX11
+  void GetConnectedOutputs(std::vector<std::string> *outputs);
+
+protected:
+  std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
+  
+  std::unique_ptr<CConnection> m_connection;
+  wayland::surface_t m_surface;
+
+private:
   // IInputHandler
   void OnEnter(std::uint32_t seatGlobalName, InputType type) override;
   void OnLeave(std::uint32_t seatGlobalName, InputType type) override;
@@ -87,12 +97,6 @@ public:
   void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
   void OnOutputAdded(std::uint32_t name, wayland::output_t& output) override;
   void OnGlobalRemoved(std::uint32_t name) override;
-  
-  // Like CWinSystemX11
-  void GetConnectedOutputs(std::vector<std::string> *outputs);
-
-protected:
-  std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
 
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
@@ -113,8 +117,6 @@ protected:
 
   void AckConfigure(std::uint32_t serial);
   
-  std::unique_ptr<CConnection> m_connection;
-  wayland::surface_t m_surface;
   std::unique_ptr<IShellSurface> m_shellSurface;
   
   std::map<std::uint32_t, CSeat> m_seatProcessors;
