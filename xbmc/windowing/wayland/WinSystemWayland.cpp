@@ -902,6 +902,10 @@ void CWinSystemWayland::UpdateTouchDpi()
   CGenericTouchInputHandler::GetInstance().SetScreenDPI(dpi);
 }
 
+void CWinSystemWayland::PrepareFramePresentation()
+{
+}
+
 #if defined(HAVE_LIBVA)
 void* CWinSystemWayland::GetVaDisplay()
 {

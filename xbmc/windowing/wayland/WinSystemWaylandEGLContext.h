@@ -51,6 +51,8 @@ protected:
    * and call this function there with appropriate parameters
    */
   bool InitWindowSystemEGL(EGLint renderableType, EGLint apiType);
+  
+  void PresentFrame(bool rendered);
 
   CGLContextEGL m_eglContext;
 };
