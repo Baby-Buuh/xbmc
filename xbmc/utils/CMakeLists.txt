@@ -144,6 +144,7 @@ set(HEADERS ActorProtocol.h
             ScraperUrl.h
             Screenshot.h
             SeekHandler.h
+            Signals.h
             SortUtils.h
             Speed.h
             Splash.h
