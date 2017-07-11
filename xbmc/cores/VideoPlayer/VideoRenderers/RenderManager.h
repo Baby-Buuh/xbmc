@@ -168,6 +168,7 @@ protected:
   void ManageCaptures();
 
   void UpdateDisplayLatency();
+  float TotalLatency();
   void CheckEnableClockSync();
 
   CBaseRenderer *m_pRenderer = nullptr;

@@ -254,6 +254,11 @@ std::string CWinSystemBase::GetClipboardText(void)
   return "";
 }
 
+float CWinSystemBase::GetDisplayLatency()
+{
+  return (NoOfBuffers() + 1) / g_graphicsContext.GetFPS();
+}
+
 int CWinSystemBase::NoOfBuffers(void)
 {
   int buffers = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOSCREEN_NOOFBUFFERS);

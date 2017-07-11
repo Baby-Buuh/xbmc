@@ -793,7 +793,7 @@ void CRenderManager::Render(bool clear, DWORD flags, DWORD alpha, bool gui)
 
       double refreshrate, clockspeed;
       int missedvblanks;
-      vsync = StringUtils::Format("VSyncOff: %.1f  ", m_clockSync.m_syncOffset / 1000);
+      vsync = StringUtils::Format("VSyncOff: %.1f latency: %.3f  ", m_clockSync.m_syncOffset / 1000, TotalLatency());
       if (m_dvdClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
       {
         vsync += StringUtils::Format("VSync: refresh:%.3f missed:%i speed:%.3f%%",
@@ -923,11 +923,13 @@ void CRenderManager::UpdateDisplayLatency()
   float refresh = fps;
   if (g_graphicsContext.GetVideoResolution() == RES_WINDOW)
     refresh = 0; // No idea about refresh rate when windowed, just get the default latency
-  m_displayLatency = (double) g_advancedSettings.GetDisplayLatency(refresh);
+  m_displayLatency = g_advancedSettings.GetDisplayLatency(refresh);
+}
 
-  int buffers = g_Windowing.NoOfBuffers();
-  m_displayLatency += (buffers - 1) / fps;
-
+float CRenderManager::TotalLatency()
+{
+  // correct display latency
+  return m_displayLatency + g_Windowing.GetDisplayLatency() - m_videoDelay / 1000.0f;
 }
 
 void CRenderManager::UpdateResolution()
@@ -1083,9 +1085,7 @@ void CRenderManager::PrepareNextRender()
   double frameOnScreen = m_dvdClock.GetClock();
   double frametime = 1.0 / g_graphicsContext.GetFPS() * DVD_TIME_BASE;
 
-  // correct display latency
-  // internal buffers of driver, assume that driver lets us go one frame in advance
-  double totalLatency = DVD_SEC_TO_TIME(m_displayLatency) - DVD_MSEC_TO_TIME(m_videoDelay) + 2* frametime;
+  double totalLatency = DVD_SEC_TO_TIME(TotalLatency());
 
   double renderPts = frameOnScreen + totalLatency;
 
