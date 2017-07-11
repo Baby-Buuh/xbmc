@@ -58,6 +58,7 @@ CConnection::CConnection(IConnectionHandler* handler)
     { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
     { wayland::zxdg_shell_v6_t::interface_name, { m_xdgShellUnstableV6, 1, 1, false } },
     { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } },
+    { wayland::presentation_t::interface_name, { m_presentation, 1, 1, false } }
   };
 
   HandleRegistry();
@@ -145,4 +146,9 @@ wayland::zxdg_shell_v6_t CConnection::GetXdgShellUnstableV6()
 wayland::zwp_idle_inhibit_manager_v1_t CConnection::GetIdleInhibitManagerUnstableV1()
 {
   return m_idleInhibitManagerUnstableV1;
+}
+
+wayland::presentation_t CConnection::GetPresentation()
+{
+  return m_presentation;
 }
