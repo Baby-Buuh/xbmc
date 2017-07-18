@@ -21,7 +21,7 @@
 
 #include <cstdint>
 
-#include "utils/Signals.h"
+#include "Signals.h"
 #include "windowing/VideoSync.h"
 
 namespace KODI
