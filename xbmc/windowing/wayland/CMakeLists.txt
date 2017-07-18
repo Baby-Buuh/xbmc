@@ -31,6 +31,7 @@ set(HEADERS Connection.h
             ShellSurface.h
             ShellSurfaceWlShell.h
             ShellSurfaceXdgShellUnstableV6.h
+            Signals.h
             VideoSyncWpPresentation.h
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.hpp
             WinEventsWayland.h
