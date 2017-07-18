@@ -32,9 +32,9 @@
 #include "Connection.h"
 #include "Output.h"
 #include "Seat.h"
+#include "Signals.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
-#include "utils/Signals.h"
 #include "windowing/WinSystem.h"
 
 class IDispResource;
