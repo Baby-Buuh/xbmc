@@ -983,7 +983,7 @@ void CWinSystemWayland::PrepareFramePresentation()
       }
       m_latencyMovingAverage = m_latencyMovingAverage + iter->latency / LATENCY_MOVING_AVERAGE_SIZE + adjust;
 
-      if (g_advancedSettings.CanLogComponent(LOGTIMING))
+      if (g_advancedSettings.CanLogComponent(LOGAVTIMING))
       {
         CLog::Log(LOGDEBUG, "Presentation feedback: %" PRIi64 " ns -> moving average %f s", latency, static_cast<double> (m_latencyMovingAverage));
       }
