@@ -929,7 +929,7 @@ void CRenderManager::UpdateDisplayLatency()
 float CRenderManager::TotalLatency()
 {
   // correct display latency
-  return m_displayLatency + g_Windowing.GetDisplayLatency() - m_videoDelay / 1000.0f;
+  return m_displayLatency + g_graphicsContext.GetDisplayLatency() - m_videoDelay / 1000.0f;
 }
 
 void CRenderManager::UpdateResolution()

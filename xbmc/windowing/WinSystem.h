@@ -91,15 +91,10 @@ public:
    * The latency should be measured as the time between finishing the rendering
    * of a frame, i.e. calling PresentRender, and the rendered content becoming
    * visible on the screen.
-   * It is permissible to make guesses about the latency when no reliable
-   * information is available from the windowing system.
    *
-   * The default implementation returns a guess based on \ref NoOfBuffers and
-   * the current refresh rate.
-   *
-   * \return average display latency in seconds
+   * \return average display latency in seconds, or negative value if unknown
    */
-  virtual float GetDisplayLatency();
+  virtual float GetDisplayLatency() { return -1.0f; }
 
   virtual bool Minimize() { return false; }
   virtual bool Restore() { return false; }
