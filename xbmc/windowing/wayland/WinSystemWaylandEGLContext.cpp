@@ -25,6 +25,7 @@
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "utils/log.h"
 #include "guilib/GraphicContext.h"
+#include "utils/TimeUtils.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -146,6 +147,7 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
     // Make sure it reaches the compositor
     m_connection->GetDisplay().flush();
   }
+  m_lastPresentTime = CurrentHostCounter();
 }
 
 EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const

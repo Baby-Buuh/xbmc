@@ -48,6 +48,7 @@
 #include "../VideoPlayer/DVDClock.h"
 #include "../VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
 #include "../VideoPlayer/DVDCodecs/DVDCodecUtils.h"
+#include "utils/TimeUtils.h"
 
 using namespace KODI::MESSAGING;
 
@@ -930,7 +931,9 @@ void CRenderManager::UpdateDisplayLatency()
 float CRenderManager::TotalLatency()
 {
   // correct display latency
-  return m_displayLatency + g_graphicsContext.GetDisplayLatency() - m_videoDelay / 1000.0f;
+  std::uint64_t now = CurrentHostCounter();
+  std::uint64_t tdiff = now - g_Windowing.LastPresentTime();
+  return m_displayLatency + g_graphicsContext.GetDisplayLatency() - m_videoDelay / 1000.0f - static_cast<double> (tdiff) / CurrentHostFrequency();
 }
 
 void CRenderManager::UpdateResolution()

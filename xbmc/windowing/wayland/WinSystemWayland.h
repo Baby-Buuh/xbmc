@@ -96,6 +96,9 @@ public:
   std::uint64_t m_prepC;
   double m_prepPts, m_prepPredictedPts;
   std::function<double()> m_dvdClockFunction;
+  std::uint64_t LastPresentTime() { return m_lastPresentTime; }
+  std::uint64_t m_lastPresentTime;
+
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
 
