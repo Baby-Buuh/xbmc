@@ -53,6 +53,7 @@
 #include "VideoSyncWpPresentation.h"
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
+#include "utils/TimeUtils.h"
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -915,8 +916,8 @@ void CWinSystemWayland::UpdateTouchDpi()
   CGenericTouchInputHandler::GetInstance().SetScreenDPI(dpi);
 }
 
-CWinSystemWayland::SurfaceSubmission::SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback)
-: submissionTime{submissionTime}, feedback{feedback}
+CWinSystemWayland::SurfaceSubmission::SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback, double pts, double predictedPts)
+: submissionTime{submissionTime}, feedback{feedback}, originalPts{pts}, predictedPts{predictedPts}
 {
 }
 
@@ -949,7 +950,7 @@ void CWinSystemWayland::PrepareFramePresentation()
     decltype(m_surfaceSubmissions)::iterator iter;
     {
       CSingleLock lock(m_surfaceSubmissionsMutex);
-      iter = m_surfaceSubmissions.emplace(m_surfaceSubmissions.end(), tStart, feedback);
+      iter = m_surfaceSubmissions.emplace(m_surfaceSubmissions.end(), tStart, feedback, m_prepPts, m_prepPredictedPts);
     }
 
     feedback.on_sync_output() = [this](wayland::output_t wloutput)
@@ -967,6 +968,11 @@ void CWinSystemWayland::PrepareFramePresentation()
     };
     feedback.on_presented() = [this,iter](std::uint32_t tvSecHi, std::uint32_t tvSecLo, std::uint32_t tvNsec, std::uint32_t refresh, std::uint32_t seqHi, std::uint32_t seqLo, wayland::presentation_feedback_kind flags)
     {
+      if (g_advancedSettings.CanLogComponent(LOGAVTIMING) && m_dvdClockFunction)
+      {
+        double dvdClockNow = m_dvdClockFunction();
+        CLog::Log(LOGDEBUG, "pts %f rendered at %f, prediction %f -> diff %f", iter->originalPts, dvdClockNow, iter->predictedPts, iter->predictedPts - dvdClockNow);
+      }
       timespec tv = { .tv_sec = static_cast<std::time_t> ((static_cast<std::uint64_t>(tvSecHi) << 32) + tvSecLo), .tv_nsec = tvNsec };
       std::int64_t latency = KODI::LINUX::TimespecDifference(iter->submissionTime, tv);
       std::uint64_t msc = (static_cast<std::uint64_t>(seqHi) << 32) + seqLo;
@@ -1058,4 +1064,12 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
     CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
     return nullptr;
   }
+}
+
+void CWinSystemWayland::PrepRenderMan(double pts, double predictedPts, std::function<double()> getDVDClockFunction)
+{
+  m_prepC = CurrentHostCounter();
+  m_prepPts = pts;
+  m_prepPredictedPts = predictedPts;
+  m_dvdClockFunction = getDVDClockFunction;
 }

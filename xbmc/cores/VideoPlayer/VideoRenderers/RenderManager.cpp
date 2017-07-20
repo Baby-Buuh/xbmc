@@ -75,6 +75,7 @@ CRenderManager::CRenderManager(CDVDClock &clock, IRenderMsg *player) :
 
 CRenderManager::~CRenderManager()
 {
+  g_Windowing.PrepRenderMan(0, 0, nullptr);
   delete m_pRenderer;
 }
 
@@ -1082,6 +1083,10 @@ void CRenderManager::PrepareNextRender()
     return;
   }
 
+  static double selectedFrameForNextRender = 0;
+  static double lastFramePts = 0;
+  static int frameRepeatCount = 0;
+
   double frameOnScreen = m_dvdClock.GetClock();
   double frametime = 1.0 / g_graphicsContext.GetFPS() * DVD_TIME_BASE;
 
@@ -1141,6 +1146,10 @@ void CRenderManager::PrepareNextRender()
     // skip late frames
     while (m_queued.front() != idx)
     {
+      if (g_advancedSettings.CanLogComponent(LOGAVTIMING))
+      {
+        CLog::Log(LOGDEBUG, "pts %f: shown 0 times", m_Queue[m_queued.front()].pts);
+      }
       requeue(m_discard, m_queued);
       m_QueueSkip++;
     }
@@ -1156,10 +1165,27 @@ void CRenderManager::PrepareNextRender()
     m_presentsource = idx;
     m_queued.pop_front();
     m_presentpts = m_Queue[idx].pts - totalLatency;
+    selectedFrameForNextRender = m_Queue[idx].pts;
     m_presentevent.notifyAll();
 
     m_playerPort->UpdateRenderBuffers(m_queued.size(), m_discard.size(), m_free.size());
   }
+
+  if (g_advancedSettings.CanLogComponent(LOGAVTIMING))
+  {
+    if (selectedFrameForNextRender == lastFramePts)
+    {
+      frameRepeatCount++;
+    }
+    else
+    {
+      CLog::Log(LOGDEBUG, "pts %f: shown %d times", lastFramePts, frameRepeatCount);
+      frameRepeatCount = 1;
+      lastFramePts = selectedFrameForNextRender;
+    }
+  }
+
+  g_Windowing.PrepRenderMan(selectedFrameForNextRender, renderPts, [this] { return m_dvdClock.GetClock(); });
 }
 
 void CRenderManager::DiscardBuffer()

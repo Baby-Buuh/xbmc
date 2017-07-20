@@ -92,6 +92,10 @@ public:
   // Like CWinSystemX11
   void GetConnectedOutputs(std::vector<std::string>* outputs);
 
+  void PrepRenderMan(double pts, double predictedPts, std::function<double()> getDVDClockFunction);
+  std::uint64_t m_prepC;
+  double m_prepPts, m_prepPredictedPts;
+  std::function<double()> m_dvdClockFunction;
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
 
@@ -160,7 +164,9 @@ private:
     timespec submissionTime;
     float latency;
     wayland::presentation_feedback_t feedback;
-    SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback);
+    double originalPts;
+    double predictedPts;
+    SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback, double pts, double predictedPts);
   };
   std::list<SurfaceSubmission> m_surfaceSubmissions;
   CCriticalSection m_surfaceSubmissionsMutex;
