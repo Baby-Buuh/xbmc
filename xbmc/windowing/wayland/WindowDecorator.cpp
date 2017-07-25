@@ -443,7 +443,17 @@ void CWindowDecorator::HandleSeatPointer(Seat& seat)
 
 void CWindowDecorator::HandleSeatTouch(Seat& seat)
 {
-
+  seat.touch.on_down() = [this, &seat](std::uint32_t serial, std::uint32_t, wayland::surface_t surface, std::int32_t id, float x, float y)
+  {
+   CSingleLock lock(m_mutex);
+   for (std::size_t i = 0; i < m_surfaces.size(); i++)
+   {
+     if (m_surfaces[i].surface == surface)
+     {
+       HandleSeatClick(seat.seat, static_cast<SurfaceIndex> (i), serial, BTN_LEFT, {x, y});
+     }
+   }
+  };
 }
 
 void CWindowDecorator::UpdateSeatCursor(Seat& seat)
