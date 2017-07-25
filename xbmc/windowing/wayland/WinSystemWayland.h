@@ -177,6 +177,10 @@ private:
   std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
 
+  // Windowed mode
+  // -------------
+  std::unique_ptr<CWindowDecorator> m_windowDecorator;
+
   // Cursor
   // ------
   bool m_osCursorVisible = true;

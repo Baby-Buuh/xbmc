@@ -53,6 +53,7 @@
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "VideoSyncWpPresentation.h"
+#include "WindowDecorator.h"
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "utils/TimeUtils.h"
@@ -166,6 +167,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   // Make sure no more events get processed when we kill the instances
   CWinEventsWayland::SetDisplay(nullptr);
 
+  m_windowDecorator.reset();
   DestroyWindow();
   // wl_display_disconnect frees all proxy objects, so we have to make sure
   // all stuff is gone on the C++ side before that
@@ -1192,6 +1194,25 @@ std::string CWinSystemWayland::GetClipboardText()
 
 void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
 {
+  if (state.test(IShellSurface::STATE_FULLSCREEN) && m_windowDecorator)
+  {
+    CLog::LogF(LOGDEBUG, "Going fullscreen, removing window decorations");
+    m_windowDecorator.reset();
+  }
+  else if (!state.test(IShellSurface::STATE_FULLSCREEN) && !m_windowDecorator)
+  {
+    CLog::LogF(LOGDEBUG, "Going windowed, adding window decorations");
+    m_windowDecorator.reset(new CWindowDecorator(*this, *m_connection, m_surface, m_surfaceSize, m_scale, state));
+  }
+
+  if (m_windowDecorator)
+  {
+    m_windowDecorator->SetWindowSize(m_surfaceSize);
+    m_windowDecorator->SetScale(m_scale);
+    m_windowDecorator->SetWindowState(state);
+  }
+
+  m_shellSurfaceState = state;
 }
 
 void CWinSystemWayland::OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial)
