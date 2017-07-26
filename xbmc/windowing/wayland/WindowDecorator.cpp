@@ -573,11 +573,14 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
 
   m_buttonColor = m_windowState.test(IShellSurface::STATE_ACTIVATED) ? BUTTON_COLOR_ACTIVE : BUTTON_COLOR_INACTIVE;
 
+  CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Setting full surface size %dx%d scale %d (main surface size %dx%d), decorations active: %u", size.Width(), size.Height(), scale, mainSurfaceSize.Width(), mainSurfaceSize.Height(), isDecorations);
+
   if (mainSurfaceSize != m_mainSurfaceSize || scale != m_scale || wasDecorations != isDecorations)
   {
     if (scale != m_scale)
     {
       // Reload cursor theme
+      CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Buffer scale changed, reloading cursor theme");
       m_cursorTheme = wayland::cursor_theme_t();
       for (auto& seat : m_seats)
       {
@@ -587,10 +590,12 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
 
     m_mainSurfaceSize = mainSurfaceSize;
     m_scale = scale;
+    CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Resetting decorations");
     Reset();
   }
   else
   {
+    CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Repainting decorations");
     // Only state differs, no reallocation needed
     Repaint();
   }
