@@ -1244,7 +1244,7 @@ void CWinSystemWayland::OnWindowMaximize()
 {
   if (m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED))
   {
-    m_shellSurface->SetUnmaximized();
+    m_shellSurface->UnsetMaximized();
   }
   else
   {

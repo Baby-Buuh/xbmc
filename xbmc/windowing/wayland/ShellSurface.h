@@ -85,7 +85,7 @@ public:
   virtual void SetFullScreen(wayland::output_t const& output, float refreshRate) = 0;
   virtual void SetWindowed() = 0;
   virtual void SetMaximized() = 0;
-  virtual void SetUnmaximized() = 0;
+  virtual void UnsetMaximized() = 0;
   virtual void SetMinimized() = 0;
   
   ConfigureHandler& OnConfigure();

@@ -58,7 +58,7 @@ public:
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
   void SetMaximized() override;
-  void SetUnmaximized() override;
+  void UnsetMaximized() override;
   void SetMinimized() override;
   void AckConfigure(std::uint32_t serial) override;
 

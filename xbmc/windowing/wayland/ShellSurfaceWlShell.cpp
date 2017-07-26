@@ -79,7 +79,7 @@ void CShellSurfaceWlShell::SetMaximized()
   m_surfaceState.set(STATE_MAXIMIZED);
 }
 
-void CShellSurfaceWlShell::SetUnmaximized()
+void CShellSurfaceWlShell::UnsetMaximized()
 {
   m_surfaceState.reset(STATE_MAXIMIZED);
 }

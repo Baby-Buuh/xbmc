@@ -146,7 +146,7 @@ void CShellSurfaceXdgShellUnstableV6::SetMaximized()
   m_xdgToplevel.set_maximized();
 }
 
-void CShellSurfaceXdgShellUnstableV6::SetUnmaximized()
+void CShellSurfaceXdgShellUnstableV6::UnsetMaximized()
 {
   m_xdgToplevel.unset_maximized();
 }
