@@ -132,7 +132,7 @@ std::size_t PositionInBuffer(CWindowDecorator::Buffer& buffer, CPointInt positio
   {
     throw std::invalid_argument("Position out of bounds");
   }
-  auto offset = buffer.size.Width() * position.y + position.x;
+  std::size_t offset = buffer.size.Width() * position.y + position.x;
   if (offset * 4 >= buffer.dataSize)
   {
     throw std::invalid_argument("Position out of bounds");
