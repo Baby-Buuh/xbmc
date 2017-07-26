@@ -148,6 +148,8 @@ private:
   void CommitAllBuffers();
   void ResetShm();
 
+  bool StateHasWindowDecorations(IShellSurface::StateBitset state) const;
+
   Buffer GetBuffer(CSizeInt size);
 
   IWindowDecorationHandler& m_handler;

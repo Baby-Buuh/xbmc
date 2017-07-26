@@ -61,11 +61,6 @@ constexpr std::uint32_t BUTTON_COLOR_INACTIVE{0xFF777777u};
 
 static_assert(BUTTON_SIZE <= TOP_BAR_HEIGHT - BUTTONS_EDGE_DISTANCE * 2, "Buttons must fit in top bar");
 
-bool StateHasWindowDecorations(IShellSurface::StateBitset state)
-{
-  return !state.test(IShellSurface::STATE_FULLSCREEN);
-}
-
 /*
  * Decorations consist of four surfaces, one for each edge of the window. It would
  * also be possible to position one single large surface behind the main surface
@@ -527,13 +522,18 @@ CWindowDecorator::BorderSurface CWindowDecorator::MakeBorderSurface()
 
 bool CWindowDecorator::IsDecorationActive() const
 {
+  return StateHasWindowDecorations(m_windowState);
+}
+
+bool CWindowDecorator::StateHasWindowDecorations(IShellSurface::StateBitset state) const
+{
   // No decorations possible if subcompositor not available
-  return m_subcompositor && StateHasWindowDecorations(m_windowState);
+  return m_subcompositor && !state.test(IShellSurface::STATE_FULLSCREEN);
 }
 
 CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
 {
-  if (m_subcompositor && StateHasWindowDecorations(state))
+  if (StateHasWindowDecorations(state))
   {
     // Subtract decorations
     return size - DecorationSize();
@@ -547,7 +547,7 @@ CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface
 
 CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
 {
-  if (m_subcompositor && StateHasWindowDecorations(state))
+  if (StateHasWindowDecorations(state))
   {
     // Add decorations
     return size + DecorationSize();
@@ -567,10 +567,10 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
     return;
   }
 
-  bool wasDecorations = StateHasWindowDecorations(m_windowState);
-  bool isDecorations = StateHasWindowDecorations(state);
-
+  bool wasDecorations = IsDecorationActive();
   m_windowState = state;
+  bool isDecorations = IsDecorationActive();
+
   m_buttonColor = m_windowState.test(IShellSurface::STATE_ACTIVATED) ? BUTTON_COLOR_ACTIVE : BUTTON_COLOR_INACTIVE;
 
   if (mainSurfaceSize != m_mainSurfaceSize || scale != m_scale || wasDecorations != isDecorations)
