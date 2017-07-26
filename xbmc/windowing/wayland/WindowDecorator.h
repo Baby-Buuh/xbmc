@@ -72,26 +72,47 @@ enum SurfaceIndex
 class CWindowDecorator
 {
 public:
-  CWindowDecorator(IWindowDecorationHandler& handler, CConnection& connection, wayland::surface_t const& mainSurface, CSizeInt windowSize, int scale = 1, IShellSurface::StateBitset state = IShellSurface::StateBitset());
+  /**
+   * Construct window decorator
+   * \param handler handler for window decoration events
+   * \param connection connection to get Wayland globals
+   * \param mainSurface main surface that decorations are constructed around
+   * \param windowSize full size of the window including decorations
+   * \param scale scale to use for buffers
+   * \param state surface state for adjusting decoration appearance
+   */
+  CWindowDecorator(IWindowDecorationHandler& handler, CConnection& connection, wayland::surface_t const& mainSurface);
 
   /**
-   * Set decoration buffer scale
+   * Set decoration state and size by providing full surface size including decorations
    *
+   * Calculates size of the main surface from size of all surfaces combined (including
+   * window decorations) by subtracting the decoration size
+   *
+   * Decorations will be disabled if state includes STATE_FULLSCREEN
+   * 
    * Call only from main thread
    */
-  void SetScale(int scale);
+  void SetState(CSizeInt size, int scale, IShellSurface::StateBitset state);
   /**
-   * Set window size for calculating decoration size
-   *
-   * Call only from main thread
+   * Get calculated size of main surface
    */
-  void SetWindowSize(CSizeInt size);
+  CSizeInt GetMainSurfaceSize()
+  {
+    return m_mainSurfaceSize;
+  }
   /**
-   * Set shell surface state for window decoration appearance
-   *
-   * Call only from main thread
+   * Calculate size of main surface given the size of the full area
+   * including decorations and a state
    */
-  void SetWindowState(IShellSurface::StateBitset state);
+  CSizeInt CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state);
+  /**
+   * Calculate size of full surface including decorations given the size of the
+   * main surface and a state
+   */
+  CSizeInt CalculateFullSurfaceSize(CSizeInt mainSurfaceSize, IShellSurface::StateBitset state);
+
+  bool IsDecorationActive() const;
 
   struct Buffer
   {
@@ -116,10 +137,10 @@ public:
 private:
   CWindowDecorator(CWindowDecorator const& other) = delete;
   CWindowDecorator& operator=(CWindowDecorator const& other) = delete;
-
-  void CreateButtons();
   
   void Reset();
+  void ResetButtons();
+  void ResetSurfaces();
   void ReattachSubsurfaces();
   void PositionButtons();
   void AllocateBuffers();
@@ -131,7 +152,7 @@ private:
 
   IWindowDecorationHandler& m_handler;
 
-  CSizeInt m_windowSize;
+  CSizeInt m_mainSurfaceSize;
   int m_scale{1};
   IShellSurface::StateBitset m_windowState;
 

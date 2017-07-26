@@ -61,6 +61,11 @@ constexpr std::uint32_t BUTTON_COLOR_INACTIVE{0xFF777777u};
 
 static_assert(BUTTON_SIZE <= TOP_BAR_HEIGHT - BUTTONS_EDGE_DISTANCE * 2, "Buttons must fit in top bar");
 
+bool StateHasWindowDecorations(IShellSurface::StateBitset state)
+{
+  return !state.test(IShellSurface::STATE_FULLSCREEN);
+}
+
 /*
  * Decorations consist of four surfaces, one for each edge of the window. It would
  * also be possible to position one single large surface behind the main surface
@@ -100,6 +105,14 @@ CSizeInt SurfaceSize(SurfaceIndex type, CSizeInt windowSurfaceSize)
     default:
       throw std::logic_error("Invalid surface type");
   }
+}
+
+/**
+ * Full size of decorations to be added to the main surface size
+ */
+CSizeInt DecorationSize()
+{
+  return {2 * BORDER_WIDTH, 2 * BORDER_WIDTH + TOP_BAR_HEIGHT};
 }
 
 std::size_t MemoryBytesForSize(CSizeInt windowSurfaceSize, int scale)
@@ -304,60 +317,17 @@ bool HandleCapabilityChange(wayland::seat_capability caps,
 
 }
 
-CWindowDecorator::CWindowDecorator(IWindowDecorationHandler& handler, CConnection& connection, wayland::surface_t const& mainSurface, CSizeInt windowSize, int scale, IShellSurface::StateBitset state)
-: m_handler{handler}, m_windowSize{windowSize}, m_scale{scale}, m_windowState{state}, m_registry{connection}, m_mainSurface{mainSurface}, m_buttonColor{BUTTON_COLOR_ACTIVE}
+CWindowDecorator::CWindowDecorator(IWindowDecorationHandler& handler, CConnection& connection, wayland::surface_t const& mainSurface)
+: m_handler{handler}, m_registry{connection}, m_mainSurface{mainSurface}, m_buttonColor{BUTTON_COLOR_ACTIVE}
 {
   static_assert(std::tuple_size<decltype(m_surfaces)>::value == SURFACE_COUNT, "SURFACE_COUNT must match surfaces array size");
-  CreateButtons();
 
   m_registry.RequestSingleton(m_compositor, 1, 4);
   m_registry.RequestSingleton(m_subcompositor, 1, 1);
   m_registry.RequestSingleton(m_shm, 1, 1);
   m_registry.Request<wayland::seat_t>(1, 5, std::bind(&CWindowDecorator::OnSeatAdded, this, _1, _2), std::bind(&CWindowDecorator::OnSeatRemoved, this, _1));
 
-  CSingleLock lock(m_mutex);
   m_registry.Bind();
-
-  std::generate(m_surfaces.begin(), m_surfaces.end(), std::bind(&CWindowDecorator::MakeBorderSurface, this));
-  Reset();
-}
-
-void CWindowDecorator::CreateButtons()
-{
-  m_buttons.clear();
-
-  // Minimize
-  m_buttons.emplace_back();
-  Button& minimize = m_buttons.back();
-  minimize.draw = [this](Buffer& buffer, CRectInt position)
-  {
-    DrawRectangle(buffer, m_buttonColor, position);
-    DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, position.Height() - BUTTON_INNER_SEPARATION - 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
-  };
-  minimize.onClick = [this] { m_handler.OnWindowMinimize(); };
-
-  // Maximize
-  m_buttons.emplace_back();
-  Button& maximize = m_buttons.back();
-  maximize.draw = [this](Buffer& buffer, CRectInt position)
-  {
-    DrawRectangle(buffer, m_buttonColor, position);
-    DrawRectangle(buffer, m_buttonColor, {position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, position.P2() - CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}});
-    DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION + 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
-  };
-  maximize.onClick = [this] { m_handler.OnWindowMaximize(); };
-
-  // Close
-  m_buttons.emplace_back();
-  Button& close = m_buttons.back();
-  close.draw = [this](Buffer& buffer, CRectInt position)
-  {
-    DrawRectangle(buffer, m_buttonColor, position);
-    auto diagonal = position.Width() - 2 * BUTTON_INNER_SEPARATION;
-    DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() + 1);
-    DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{position.Width() - BUTTON_INNER_SEPARATION - 1, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() - 1);
-  };
-  close.onClick = [this] { m_handler.OnWindowClose(); };
 }
 
 void CWindowDecorator::PositionButtons()
@@ -470,7 +440,7 @@ void CWindowDecorator::UpdateSeatCursor(Seat& seat)
 
   {
     CSingleLock lock(m_mutex);
-    auto resizeEdge = ResizeEdgeForPosition(seat.currentSurface, SurfaceSize(seat.currentSurface, m_windowSize), seat.pointerPosition);
+    auto resizeEdge = ResizeEdgeForPosition(seat.currentSurface, SurfaceSize(seat.currentSurface, m_mainSurfaceSize), seat.pointerPosition);
     if (resizeEdge != wayland::shell_surface_resize::none)
     {
       cursorName = CursorForResizeEdge(resizeEdge);
@@ -519,7 +489,7 @@ void CWindowDecorator::HandleSeatClick(wayland::seat_t seat, SurfaceIndex surfac
     case BTN_LEFT:
     {
       CSingleLock lock(m_mutex);
-      auto resizeEdge = ResizeEdgeForPosition(surface, m_windowSize, position);
+      auto resizeEdge = ResizeEdgeForPosition(surface, m_mainSurfaceSize, position);
       if (resizeEdge == wayland::shell_surface_resize::none)
       {
         for (auto const& button : m_buttons)
@@ -555,72 +525,183 @@ CWindowDecorator::BorderSurface CWindowDecorator::MakeBorderSurface()
   return {surface, subsurface};
 }
 
-void CWindowDecorator::SetWindowSize(CSizeInt size)
+bool CWindowDecorator::IsDecorationActive() const
 {
-  if (size == m_windowSize)
-  {
-    return;
-  }
-
-  CSingleLock lock(m_mutex);
-  m_windowSize = size;
-  Reset();
+  // No decorations possible if subcompositor not available
+  return m_subcompositor && StateHasWindowDecorations(m_windowState);
 }
 
-void CWindowDecorator::SetScale(int scale)
+CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
 {
-  if (scale == m_scale)
+  if (m_subcompositor && StateHasWindowDecorations(state))
   {
-    return;
+    // Subtract decorations
+    return size - DecorationSize();
   }
-
-  CSingleLock lock(m_mutex);
-  // Reload cursor theme
-  m_cursorTheme = wayland::cursor_theme_t();
-  for (auto& seat : m_seats)
+  else
   {
-    UpdateSeatCursor(seat.second);
+    // Fullscreen -> no decorations
+    return size;
   }
-  // Reallocate everything
-  Reset();
 }
 
-void CWindowDecorator::SetWindowState(IShellSurface::StateBitset state)
+CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
 {
-  if (state == m_windowState)
+  if (m_subcompositor && StateHasWindowDecorations(state))
+  {
+    // Add decorations
+    return size + DecorationSize();
+  }
+  else
+  {
+    // Fullscreen -> no decorations
+    return size;
+  }
+}
+
+void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBitset state)
+{
+  CSizeInt mainSurfaceSize = CalculateMainSurfaceSize(size, state);
+  if (mainSurfaceSize == m_mainSurfaceSize && scale == m_scale && state == m_windowState)
   {
     return;
   }
+
+  bool wasDecorations = StateHasWindowDecorations(m_windowState);
+  bool isDecorations = StateHasWindowDecorations(state);
 
   m_windowState = state;
   m_buttonColor = m_windowState.test(IShellSurface::STATE_ACTIVATED) ? BUTTON_COLOR_ACTIVE : BUTTON_COLOR_INACTIVE;
-  Repaint();
+
+  if (mainSurfaceSize != m_mainSurfaceSize || scale != m_scale || wasDecorations != isDecorations)
+  {
+    if (scale != m_scale)
+    {
+      // Reload cursor theme
+      m_cursorTheme = wayland::cursor_theme_t();
+      for (auto& seat : m_seats)
+      {
+        UpdateSeatCursor(seat.second);
+      }
+    }
+
+    m_mainSurfaceSize = mainSurfaceSize;
+    m_scale = scale;
+    Reset();
+  }
+  else
+  {
+    // Only state differs, no reallocation needed
+    Repaint();
+  }
 }
 
 void CWindowDecorator::Reset()
 {
+  ResetButtons();
+  ResetSurfaces();
   ResetShm();
-  ReattachSubsurfaces();
-  AllocateBuffers();
-  PositionButtons();
-  Repaint();
+  if (IsDecorationActive())
+  {
+    ReattachSubsurfaces();
+    AllocateBuffers();
+    PositionButtons();
+    Repaint();
+  }
+}
+
+void CWindowDecorator::ResetButtons()
+{
+  CSingleLock lock(m_mutex);
+
+  if (IsDecorationActive())
+  {
+    if (m_buttons.empty())
+    {
+      // Minimize
+      m_buttons.emplace_back();
+      Button& minimize = m_buttons.back();
+      minimize.draw = [this](Buffer& buffer, CRectInt position)
+      {
+        DrawRectangle(buffer, m_buttonColor, position);
+        DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, position.Height() - BUTTON_INNER_SEPARATION - 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
+      };
+      minimize.onClick = [this] { m_handler.OnWindowMinimize(); };
+
+      // Maximize
+      m_buttons.emplace_back();
+      Button& maximize = m_buttons.back();
+      maximize.draw = [this](Buffer& buffer, CRectInt position)
+      {
+        DrawRectangle(buffer, m_buttonColor, position);
+        DrawRectangle(buffer, m_buttonColor, {position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, position.P2() - CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}});
+        DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION + 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
+      };
+      maximize.onClick = [this] { m_handler.OnWindowMaximize(); };
+
+      // Close
+      m_buttons.emplace_back();
+      Button& close = m_buttons.back();
+      close.draw = [this](Buffer& buffer, CRectInt position)
+      {
+        DrawRectangle(buffer, m_buttonColor, position);
+        auto diagonal = position.Width() - 2 * BUTTON_INNER_SEPARATION;
+        DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() + 1);
+        DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{position.Width() - BUTTON_INNER_SEPARATION - 1, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() - 1);
+      };
+      close.onClick = [this] { m_handler.OnWindowClose(); };
+    }
+  }
+  else
+  {
+    m_buttons.clear();
+  }
+}
+
+void CWindowDecorator::ResetSurfaces()
+{
+  CSingleLock lock(m_mutex);
+  if (IsDecorationActive())
+  {
+    if (!m_surfaces.front().surface)
+    {
+      std::generate(m_surfaces.begin(), m_surfaces.end(), std::bind(&CWindowDecorator::MakeBorderSurface, this));
+    }
+  }
+  else
+  {
+    for (auto& surface : m_surfaces)
+    {
+      surface.surface.proxy_release();
+      surface.subsurface.proxy_release();
+    }
+  }
 }
 
 void CWindowDecorator::ReattachSubsurfaces()
 {
   CSingleLock lock(m_mutex);
   m_surfaces[SURFACE_TOP].subsurface.set_position(-BORDER_WIDTH, -(BORDER_WIDTH + TOP_BAR_HEIGHT));
-  m_surfaces[SURFACE_RIGHT].subsurface.set_position(m_windowSize.Width(), 0);
-  m_surfaces[SURFACE_BOTTOM].subsurface.set_position(-BORDER_WIDTH, m_windowSize.Height());
+  m_surfaces[SURFACE_RIGHT].subsurface.set_position(m_mainSurfaceSize.Width(), 0);
+  m_surfaces[SURFACE_BOTTOM].subsurface.set_position(-BORDER_WIDTH, m_mainSurfaceSize.Height());
   m_surfaces[SURFACE_LEFT].subsurface.set_position(-BORDER_WIDTH, 0);
 }
 
 void CWindowDecorator::ResetShm()
 {
   CSingleLock lock(m_mutex);
-  m_memory.reset(new CShm(MemoryBytesForSize(m_windowSize, m_scale)));
-  m_memoryAllocatedSize = 0;
-  m_shmPool = m_shm.create_pool(m_memory->Fd(), m_memory->Size());
+  if (IsDecorationActive())
+  {
+    m_memory.reset(new CShm(MemoryBytesForSize(m_mainSurfaceSize, m_scale)));
+    m_memoryAllocatedSize = 0;
+    m_shmPool = m_shm.create_pool(m_memory->Fd(), m_memory->Size());
+  }
+  else
+  {
+    m_memory.reset();
+    m_shmPool.proxy_release();
+  }
+
   for (auto& surface : m_surfaces)
   {
     surface.currentBuffer.data = nullptr;
@@ -656,7 +737,7 @@ void CWindowDecorator::AllocateBuffers()
   {
     if (!m_surfaces[i].currentBuffer.data)
     {
-      auto size = SurfaceSize(static_cast<SurfaceIndex> (i), m_windowSize);
+      auto size = SurfaceSize(static_cast<SurfaceIndex> (i), m_mainSurfaceSize);
       m_surfaces[i].currentBuffer = GetBuffer(size * m_scale);
       auto region = m_compositor.create_region();
       region.add(0, 0, size.Width(), size.Height());
