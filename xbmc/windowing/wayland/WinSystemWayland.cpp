@@ -57,6 +57,7 @@
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "utils/TimeUtils.h"
+#include "utils/ActorProtocol.h"
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -96,6 +97,23 @@ struct OutputCurrentRefreshRateComparer
   }
 };
 
+namespace WinSystemWaylandProtocol
+{
+
+enum OutMessage
+{
+  CONFIGURE = 0
+};
+
+struct MsgConfigure
+{
+  std::uint32_t serial;
+  CSizeInt surfaceSize;
+  IShellSurface::StateBitset state;
+};
+
+};
+
 /// ID for a resolution that was set in response to configure
 const std::string CONFIGURE_RES_ID = "configure";
 /// ID for a resoultion that was set in response to an internal event (such as setting window size explicitly)
@@ -104,7 +122,7 @@ const std::string INTERNAL_RES_ID = "internal";
 }
 
 CWinSystemWayland::CWinSystemWayland() :
-CWinSystemBase(), m_resizeSkinReloadTimer([] { g_application.ReloadSkin(); })
+CWinSystemBase(), m_resizeSkinReloadTimer([] { g_application.ReloadSkin(); }), m_protocol{"WinSystemWaylandInternal"}
 {
   m_eWindowSystem = WINDOW_SYSTEM_WAYLAND;
 }
@@ -488,13 +506,6 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   // Size is always updated in configure handler
   bool sizeUpdated = wasConfigure;
 
-  // Update shell surface state first so following code does the right thing
-  if (wasConfigure)
-  {
-    // New shell surface state can only come from configure
-    ApplyShellSurfaceState();
-  }
-
   // We can honor the Kodi-requested size only if we are not bound by configure rules,
   // which applies for maximized and fullscreen states.
   // Also, setting an unconfigured size just when going fullscreen makes no sense.
@@ -608,13 +619,6 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
         g_application.ReloadSkin();
       }
     }
-
-    // Next buffer that the graphic context attaches will have the size corresponding
-    // to this configure, so go and ack it
-    if (wasConfigure)
-    {
-      AckConfigure(m_currentConfigureSerial);
-    }
   }
 
   // Update window decoration state
@@ -634,6 +638,31 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   return sizeUpdated || wasInitialSetFullScreen;
 }
 
+void CWinSystemWayland::ProcessMessages()
+{
+  Actor::Message* message{};
+  while (m_protocol.ReceiveOutMessage(&message))
+  {
+    // FIXME maybe make a typedef / extra class for this
+    KODI::UTILS::CScopeGuard<Actor::Message*, nullptr, void(Actor::Message*)> guard{std::bind(&Actor::Message::Release, message), message};
+
+    switch (message->signal)
+    {
+      case WinSystemWaylandProtocol::CONFIGURE:
+      {
+        auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (message->data);
+        CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
+        ApplyShellSurfaceState(configure->state);
+        ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
+        AckConfigure(configure->serial);
+      }
+      break;
+      default:
+        CLog::LogF(LOGWARNING, "Unhandled message %d", message->signal);
+    }
+  }
+}
+
 void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
 {
   m_inhibitSkinReload = inhibit;
@@ -643,40 +672,26 @@ void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
   }
 }
 
-void CWinSystemWayland::ApplyShellSurfaceState()
+void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
 {
   if (m_windowDecorator)
   {
-    m_windowDecorator->SetState(m_configuredSize, m_scale, m_nextShellSurfaceState);
+    m_windowDecorator->SetState(m_configuredSize, m_scale, state);
   }
-  if (!m_nextShellSurfaceState.test(IShellSurface::STATE_RESIZING) && m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
+  if (!state.test(IShellSurface::STATE_RESIZING) && m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
   {
     // Resizing has ended
     m_resizeSkinReloadTimer.Stop(false);
     // Need to reload finally
     g_application.ReloadSkin();
   }
-  m_shellSurfaceState = m_nextShellSurfaceState;
+  m_shellSurfaceState = state;
 }
 
 void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
 {
-  CSingleLock lock(g_graphicsContext);
-  CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
-  m_currentConfigureSerial = serial;
-  m_nextShellSurfaceState = state;
-  if (!ResetSurfaceSize(size, m_scale, state.test(IShellSurface::STATE_FULLSCREEN), true))
-  {
-    // surface state may still have changed, apply that
-    // Fullscreen will not have changed, since that is handled in ResetSurfaceSize.
-    // All other changes only affect the appearance of the decorations and so need
-    // not be synchronized with the main surface.
-    // FIXME Call from main thread!!
-    ApplyShellSurfaceState();
-    // nothing changed, ack immediately
-    AckConfigure(serial);
-  }
-  // configure is acked when the Kodi surface has actually been reconfigured
+  WinSystemWaylandProtocol::MsgConfigure msg{serial, size, state};
+  m_protocol.SendOutMessage(WinSystemWaylandProtocol::CONFIGURE, &msg, sizeof(msg));
 }
 
 void CWinSystemWayland::AckConfigure(std::uint32_t serial)
@@ -741,7 +756,7 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
     }
   }
 
-  sizeChanged = SetSize(size, m_nextShellSurfaceState, sizeIncludesDecoration);
+  sizeChanged = SetSize(size, m_shellSurfaceState, sizeIncludesDecoration);
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
   // m_surfaceOutputs is only updated from event handling thread, so no lock
@@ -1196,6 +1211,8 @@ void CWinSystemWayland::PrepareFramePresentation()
 
 void CWinSystemWayland::FinishFramePresentation()
 {
+  ProcessMessages();
+
   m_frameStartTime = CurrentHostCounter();
 }
 
