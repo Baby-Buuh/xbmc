@@ -43,7 +43,7 @@ std::string IShellSurface::StateToString(StateBitset state)
   {
     parts.emplace_back("resizing");
   }
-  return StringUtils::Join(parts, ",");
+  return parts.empty() ? "none" : StringUtils::Join(parts, ",");
 }
 
 IShellSurface::ConfigureHandler& IShellSurface::OnConfigure()
