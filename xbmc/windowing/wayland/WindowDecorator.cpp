@@ -569,13 +569,12 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
 
   bool wasDecorations = IsDecorationActive();
   m_windowState = state;
-  bool isDecorations = IsDecorationActive();
 
   m_buttonColor = m_windowState.test(IShellSurface::STATE_ACTIVATED) ? BUTTON_COLOR_ACTIVE : BUTTON_COLOR_INACTIVE;
 
-  CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Setting full surface size %dx%d scale %d (main surface size %dx%d), decorations active: %u", size.Width(), size.Height(), scale, mainSurfaceSize.Width(), mainSurfaceSize.Height(), isDecorations);
+  CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Setting full surface size %dx%d scale %d (main surface size %dx%d), decorations active: %u", size.Width(), size.Height(), scale, mainSurfaceSize.Width(), mainSurfaceSize.Height(), IsDecorationActive());
 
-  if (mainSurfaceSize != m_mainSurfaceSize || scale != m_scale || wasDecorations != isDecorations)
+  if (mainSurfaceSize != m_mainSurfaceSize || scale != m_scale || wasDecorations != IsDecorationActive())
   {
     if (scale != m_scale)
     {
@@ -593,7 +592,7 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
     CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Resetting decorations");
     Reset();
   }
-  else
+  else if (IsDecorationActive())
   {
     CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Repainting decorations");
     // Only state differs, no reallocation needed
