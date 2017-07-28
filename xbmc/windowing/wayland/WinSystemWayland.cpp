@@ -650,25 +650,37 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 void CWinSystemWayland::ProcessMessages()
 {
   Actor::Message* message{};
+  // FIXME maybe make a typedef / extra class for this
+  KODI::UTILS::CScopeGuard<Actor::Message*, nullptr, void(Actor::Message*)> lastConfigureMessage{std::bind(&Actor::Message::Release, message), nullptr};
+  int skippedConfigures = -1;
+
   while (m_protocol.ReceiveOutMessage(&message))
   {
-    // FIXME maybe make a typedef / extra class for this
     KODI::UTILS::CScopeGuard<Actor::Message*, nullptr, void(Actor::Message*)> guard{std::bind(&Actor::Message::Release, message), message};
-
     switch (message->signal)
     {
       case WinSystemWaylandProtocol::CONFIGURE:
       {
-        auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (message->data);
-        CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
-        ApplyShellSurfaceState(configure->state);
-        ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
-        AckConfigure(configure->serial);
+        skippedConfigures++;
+        lastConfigureMessage = std::move(guard);
       }
       break;
       default:
         CLog::LogF(LOGWARNING, "Unhandled message %d", message->signal);
     }
+  }
+
+  if (lastConfigureMessage)
+  {
+    if (skippedConfigures > 0)
+    {
+      CLog::LogF(LOGDEBUG, "Skipped %d configures", skippedConfigures);
+    }
+    auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (static_cast<Actor::Message*> (lastConfigureMessage)->data);
+    CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
+    ApplyShellSurfaceState(configure->state);
+    ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
+    AckConfigure(configure->serial);
   }
 }
 
