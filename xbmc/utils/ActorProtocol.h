@@ -57,7 +57,7 @@ private:
 class Protocol
 {
 public:
-  Protocol(std::string name, CEvent* inEvent, CEvent *outEvent)
+  Protocol(std::string name, CEvent* inEvent = nullptr, CEvent *outEvent = nullptr)
     : portName(name), inDefered(false), outDefered(false) {containerInEvent = inEvent; containerOutEvent = outEvent;};
   virtual ~Protocol();
   Message *GetMessage();
