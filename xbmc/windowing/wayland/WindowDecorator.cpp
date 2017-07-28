@@ -676,8 +676,14 @@ void CWindowDecorator::ResetSurfaces()
   {
     for (auto& surface : m_surfaces)
     {
-      surface.surface.proxy_release();
-      surface.subsurface.proxy_release();
+      if (surface.surface)
+      {
+        // Destryoing the surface would cause some flicker because it takes effect
+        // immediately, before the next commit on the main surface - just make it
+        // invisible by attaching a NULL buffer
+        surface.surface.attach(wayland::buffer_t(), 0, 0);
+        surface.surface.commit();
+      }
     }
   }
 }
