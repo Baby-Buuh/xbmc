@@ -604,11 +604,18 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
       ApplyBufferScale(m_scale);
     }
 
-    if (m_shellSurfaceState.test(IShellSurface::STATE_RESIZING) && !m_resizeSkinReloadTimer.IsRunning())
+    if (m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
     {
-      // Reloading the skin is costly -> during resizing (when the size changes quite
-      // often), only reload every second
-      m_resizeSkinReloadTimer.Start(1000u, true);
+      // Reloading the skin is costly and takes some time -> during resizing
+      // (when the size changes quite often), only reload after no movement for some time
+      if (m_resizeSkinReloadTimer.IsRunning())
+      {
+        m_resizeSkinReloadTimer.Restart();
+      }
+      else
+      {
+        m_resizeSkinReloadTimer.Start(500u, false);
+      }
     }
     else if (!m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
     {
