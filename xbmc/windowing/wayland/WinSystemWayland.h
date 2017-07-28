@@ -229,6 +229,8 @@ private:
   std::int32_t m_scale = 1;
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
+  /// Timer for reloading the skin during resizing
+  CTimer m_resizeSkinReloadTimer;
 
   // Configure state
   // ---------------

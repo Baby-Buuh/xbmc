@@ -104,7 +104,7 @@ const std::string INTERNAL_RES_ID = "internal";
 }
 
 CWinSystemWayland::CWinSystemWayland() :
-CWinSystemBase()
+CWinSystemBase(), m_resizeSkinReloadTimer([] { g_application.ReloadSkin(); })
 {
   m_eWindowSystem = WINDOW_SYSTEM_WAYLAND;
 }
@@ -592,11 +592,21 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
       ApplyBufferScale(m_scale);
     }
 
-    // FIXME This assumes that the resolution has already been set. Should
-    // be moved to some post-change callback when resolution setting is refactored.
-    if (!m_inhibitSkinReload)
+    if (m_shellSurfaceState.test(IShellSurface::STATE_RESIZING) && !m_resizeSkinReloadTimer.IsRunning())
     {
-      g_application.ReloadSkin();
+      // Reloading the skin is costly -> during resizing (when the size changes quite
+      // often), only reload every second
+      m_resizeSkinReloadTimer.Start(1000u, true);
+    }
+    else if (!m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
+    {
+      // Always reload when not resizing
+      if (!m_inhibitSkinReload)
+      {
+        // FIXME This assumes that the resolution has already been set. Should
+        // be moved to some post-change callback when resolution setting is refactored.
+        g_application.ReloadSkin();
+      }
     }
 
     // Next buffer that the graphic context attaches will have the size corresponding
@@ -638,6 +648,13 @@ void CWinSystemWayland::ApplyShellSurfaceState()
   if (m_windowDecorator)
   {
     m_windowDecorator->SetState(m_configuredSize, m_scale, m_nextShellSurfaceState);
+  }
+  if (!m_nextShellSurfaceState.test(IShellSurface::STATE_RESIZING) && m_shellSurfaceState.test(IShellSurface::STATE_RESIZING))
+  {
+    // Resizing has ended
+    m_resizeSkinReloadTimer.Stop(false);
+    // Need to reload finally
+    g_application.ReloadSkin();
   }
   m_shellSurfaceState = m_nextShellSurfaceState;
 }
