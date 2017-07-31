@@ -643,14 +643,13 @@ void CWinSystemWayland::ApplySizeUpdate(SizeUpdateInformation update)
 void CWinSystemWayland::ProcessMessages()
 {
   Actor::Message* message{};
-  // FIXME maybe make a typedef / extra class for this
-  KODI::UTILS::CScopeGuard<Actor::Message*, nullptr, void(Actor::Message*)> lastConfigureMessage{std::bind(&Actor::Message::Release, message), nullptr};
+  Actor::MessageHandle lastConfigureMessage;
   int skippedConfigures = -1;
   int newScale = m_scale;
 
   while (m_protocol.ReceiveOutMessage(&message))
   {
-    KODI::UTILS::CScopeGuard<Actor::Message*, nullptr, void(Actor::Message*)> guard{std::bind(&Actor::Message::Release, message), message};
+    Actor::MessageHandle guard{message};
     switch (message->signal)
     {
       case WinSystemWaylandProtocol::CONFIGURE:
@@ -679,7 +678,7 @@ void CWinSystemWayland::ProcessMessages()
         // Never update buffer scale if not possible to set it
         if (m_surface.can_set_buffer_scale())
         {
-          newScale = (reinterpret_cast<WinSystemWaylandProtocol::MsgBufferScale*> (static_cast<Actor::Message*> (guard)->data))->scale;
+          newScale = (reinterpret_cast<WinSystemWaylandProtocol::MsgBufferScale*> (message->data))->scale;
         }
         break;
     }
@@ -697,7 +696,7 @@ void CWinSystemWayland::ProcessMessages()
     // output for example
     // It is very important that the EGL native module and the rendering system use the
     // Wayland-announced size for rendering or corrupted graphics output will result.
-    auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (static_cast<Actor::Message*> (lastConfigureMessage)->data);
+    auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (lastConfigureMessage.Get()->data);
     CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
     ApplyShellSurfaceState(configure->state);
 
