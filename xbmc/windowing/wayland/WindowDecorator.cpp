@@ -577,7 +577,7 @@ void CWindowDecorator::HandleSeatClick(wayland::seat_t seat, SurfaceIndex surfac
     case BTN_LEFT:
     {
       CSingleLock lock(m_mutex);
-      auto resizeEdge = ResizeEdgeForPosition(surface, m_mainSurfaceSize, position);
+      auto resizeEdge = ResizeEdgeForPosition(surface, SurfaceGeometry(surface, m_mainSurfaceSize).ToSize(), position);
       if (resizeEdge == wayland::shell_surface_resize::none)
       {
         for (auto const& button : m_buttons)
