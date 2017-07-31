@@ -23,6 +23,7 @@
 #include "threads/Thread.h"
 #include <queue>
 #include "memory.h"
+#include "utils/ScopeGuard.h"
 
 #define MSG_INTERNAL_BUFFER_SIZE 32
 
@@ -52,6 +53,14 @@ public:
 
 private:
   Message() {isSync = false; data = NULL; event = NULL; replyMessage = NULL;};
+};
+
+class MessageHandle : public ::KODI::UTILS::CScopeGuard<Message*, nullptr, void(Message*)>
+{
+public:
+  MessageHandle() : CScopeGuard{std::bind(&Message::Release, std::placeholders::_1), nullptr} {}
+  explicit MessageHandle(Message* message) : CScopeGuard{std::bind(&Actor::Message::Release, std::placeholders::_1), message} {}
+  Message* Get() { return static_cast<Message*> (*this); }
 };
 
 class Protocol
