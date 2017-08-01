@@ -144,11 +144,12 @@ void CRegistry::Bind()
 
   CheckRequired();
 
-  // FIXME This needs more work, events could be dispatched in parallel!
   // Now switch it to the global queue for further runtime binds
   m_registry.set_queue(wayland::event_queue_t());
-  // Roundtrip extra queue one last time in case something got queued up there
-  m_connection.GetDisplay().roundtrip_queue(registryRoundtripQueue);
+  // Roundtrip extra queue one last time in case something got queued up there.
+  // Do it on the event thread so it does not race/run in parallel with the
+  // dispatch of newly arrived registry messages in the default queue.
+  CWinEventsWayland::RoundtripQueue(registryRoundtripQueue);
 }
 
 void CRegistry::UnbindSingletons()
