@@ -50,9 +50,10 @@ public:
   /**
    * Request a static singleton global to be bound to a proxy
    *
-   * You should only use this if the singleton is announced at registry bind time,
-   * not dynamically. Use \ref Request for dynamically appearing objects,
-   * even if they are only bound once.
+   * You should only use this if the singleton is announced at registry bind time
+   * (not dynamically) and you do not need to catch events that are sent immediately
+   * in response to the bind. Use \ref Request in that case, even if there is
+   * ever only one instance of the object at maximum.
    *
    * Cannot be called after \ref Bind has been called.
    *
@@ -72,8 +73,12 @@ public:
   /**
    * Request a callback when a dynamic global appears or disappears
    *
-   * The callbacks may be called during or after \ref Bind from the thread
-   * that calls \ref Bind or the global Wayland message pump thread.
+   * The callbacks may be called from the thread that calls \ref Bind or the
+   * global Wayland message pump thread during \ref Bind (but never at the same
+   * time) and only from the global thread after \ref Bind returns.
+   *
+   * Events that occur immediately upon binding are only delivered reliably
+   * if \ref Bind is called from the Wayland message pump thread.
    *
    * Cannot be called after \ref Bind has been called.
    *

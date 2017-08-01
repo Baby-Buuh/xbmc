@@ -23,6 +23,7 @@
 #include <wayland-client-protocol.h>
 
 #include "utils/log.h"
+#include "WinEventsWayland.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -87,14 +88,10 @@ void CRegistry::Bind()
 
   auto registryRoundtripQueue = m_connection.GetDisplay().create_queue();
 
-  // TODO create API for proxy wrappers in waylandpp
-  auto displayProxy = static_cast<wl_display*> (wl_proxy_create_wrapper(m_connection.GetDisplay()));
-  wl_proxy_set_queue(reinterpret_cast<wl_proxy*> (displayProxy), registryRoundtripQueue);
-  auto wlRegistry = wl_display_get_registry(displayProxy);
-  wl_proxy_wrapper_destroy(displayProxy);
-  wayland::proxy_t registryProxy(reinterpret_cast<wl_proxy*> (wlRegistry));
-
-  m_registry = wayland::registry_t(registryProxy);
+  auto displayProxy = m_connection.GetDisplay().proxy_create_wrapper();
+  displayProxy.set_queue(registryRoundtripQueue);
+  
+  m_registry = displayProxy.get_registry();
 
   m_registry.on_global() = [this] (std::uint32_t name, std::string interface, std::uint32_t version)
   {
@@ -103,14 +100,10 @@ void CRegistry::Bind()
       if (it != m_singletonBinds.end())
       {
         auto& bind = it->second;
-        TryBind(m_registry, bind.target, name, interface, bind.minVersion, bind.maxVersion, version);
-        if (bind.target)
-        {
-          // Events on the bound global should always go to the main queue
-          // TODO Figure out what to do with globals that announce some initial events,
-          // those could get lost when the event pump is running
-          bind.target.set_queue(wayland::event_queue_t());
-        }
+        auto registryProxy = m_registry.proxy_create_wrapper();
+        // Events on the bound global should always go to the main queue
+        registryProxy.set_queue(wayland::event_queue_t());
+        TryBind(registryProxy, bind.target, name, interface, bind.minVersion, bind.maxVersion, version);
         return;
       }
     }
@@ -121,11 +114,12 @@ void CRegistry::Bind()
       {
         auto& bind = it->second;
         wayland::proxy_t target{bind.constructor()};
-        TryBind(m_registry, target, name, interface, bind.minVersion, bind.maxVersion, version);
+        auto registryProxy = m_registry.proxy_create_wrapper();
+        // Events on the bound global should always go to the main queue
+        registryProxy.set_queue(wayland::event_queue_t());
+        TryBind(registryProxy, target, name, interface, bind.minVersion, bind.maxVersion, version);
         if (target)
         {
-          // Events on the bound global should always go to the main queue
-          target.set_queue(wayland::event_queue_t());
           m_boundNames.emplace(name, bind);
           bind.addHandler(name, std::move(target));
         }
